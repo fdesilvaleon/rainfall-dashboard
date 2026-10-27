@@ -2,7 +2,7 @@ name: Collect rainfall data
 
 on:
   schedule:
-    - cron: "17 * * * *"  # every hour, at 17 minutes past
+    - cron: "17 1,7,13,19 * * *"  # every 6 hours (times are UTC): about 6 am, noon, 6 pm, midnight Pacific
   workflow_dispatch:       # adds a "Run workflow" button on GitHub
 
 permissions:
