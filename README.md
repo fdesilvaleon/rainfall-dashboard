@@ -2,7 +2,17 @@
 
 This project collects rainfall readings for the Mountain View area from the
 [Santa Clara Valley Water District's ALERT rain gauges](https://valleywateralert.org/scvwd/pgi.php).
-A dashboard page will be added later and hosted free on GitHub Pages.
+
+**Dashboard:** https://fdesilvaleon.github.io/rainfall-dashboard/
+
+The dashboard (`index.html`) shows a map of the gauges, a summary table, and
+charts of season totals and hourly rain. It is hosted free on GitHub Pages and
+reads the data files in this repository, so it updates whenever new data is
+collected.
+
+> **Not for safety decisions.** For emergencies, flood warnings and safety
+> information, check the Santa Clara Valley Water website
+> ([valleywater.org](https://www.valleywater.org/)) and official local alerts.
 
 ## How it works
 
@@ -41,3 +51,14 @@ Other details:
   last real reading in the hour. If there isn't one, the season total is blank.
 - The most recent hour is updated on later runs as the hour fills in.
 - The data is preliminary and may contain errors, as noted on the district's site.
+
+## Attribution and disclaimer
+
+Data: Santa Clara Valley Water ALERT system
+([alert.valleywater.org](https://alert.valleywater.org/)). Readings are
+preliminary and unreviewed, may contain errors or gaps, and may be revised by
+the district. This is an independent personal project and is not affiliated
+with or endorsed by Santa Clara Valley Water. Data is provided as is, with no
+guarantee of accuracy, completeness or timeliness, and the author is not
+responsible for any decisions made from it. Map data ©
+[OpenStreetMap contributors](https://www.openstreetmap.org/copyright).

@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mountain View Area Rainfall</title>
+<meta name="description" content="Rainfall at Santa Clara Valley Water ALERT rain gauges around Mountain View.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f6f6f4;
+    --surface: #fcfcfb;
+    --border: #e2e1dc;
+    --text: #0b0b0b;
+    --text-2: #52514e;
+    --muted: #6b6a66;
+    --grid: #ecebe7;
+    --accent: #2a78d6;
+    --notice-bg: #f0efec;
+    --error-bg: #fdecec;
+    --error-text: #8a1f1f;
+    /* line chart: one fixed color per gauge, in gauges.csv order */
+    --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+    --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
+    /* map markers: rain in the last 24 hours, light to dark blue */
+    --r0: #b4b2a9; --r1: #86b6ef; --r2: #3987e5; --r3: #1c5cab; --r4: #0d366b;
+    --ring: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #121211;
+      --surface: #1a1a19;
+      --border: #33332f;
+      --text: #f0efec;
+      --text-2: #c3c2b7;
+      --muted: #a3a29b;
+      --grid: #2a2a27;
+      --accent: #5598e7;
+      --notice-bg: #262624;
+      --error-bg: #3a1c1c;
+      --error-text: #f3b4b4;
+      --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+      --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+      --r0: #6b6a66; --r1: #86b6ef; --r2: #5598e7; --r3: #2a78d6; --r4: #184f95;
+      --ring: #1a1a19;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+  header { padding: 24px 0 12px; }
+  h1 { margin: 0; font-size: 1.6rem; line-height: 1.25; }
+  .updated { margin: 4px 0 0; color: var(--text-2); }
+  h2 { font-size: 1.15rem; margin: 0 0 4px; }
+  .sub { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; }
+
+  .notice {
+    background: var(--notice-bg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--muted);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 4px 0 16px;
+    font-size: 0.95rem;
+    color: var(--text-2);
+  }
+  .error {
+    background: var(--error-bg);
+    color: var(--error-text);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 0 0 16px;
+  }
+  .error[hidden] { display: none; }
+
+  section.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin: 0 0 16px;
+  }
+
+  #map {
+    height: 420px;
+    border-radius: 8px;
+    background: var(--notice-bg);
+  }
+  .map-message { padding: 24px; color: var(--text-2); }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    margin: 10px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-2);
+  }
+  .legend b { color: var(--text); font-weight: 600; }
+  .legend span.dot { margin-right: 6px; }
+  .map-note { margin: 6px 0 0; font-size: 0.85rem; color: var(--muted); }
+  .map-note[hidden] { display: none; }
+  .leaflet-interactive:focus { outline: none; }
+  .dot {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    vertical-align: middle;
+  }
+
+  /* map popup card */
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--text); }
+  .leaflet-popup-content { margin: 12px 14px; font-size: 0.9rem; line-height: 1.4; }
+  .pop h3 { margin: 0 0 6px; font-size: 1rem; }
+  .pop dl { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 0 0 8px; }
+  .pop dt { color: var(--text-2); }
+  .pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .pop .mini { position: relative; height: 110px; margin: 4px 0 8px; }
+  .pop .mini-title { color: var(--text-2); font-size: 0.8rem; }
+  .pop .note { color: var(--muted); font-size: 0.8rem; margin: 0 0 6px; }
+  .pop a { color: var(--accent); font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { font-size: 0.85rem; color: var(--text-2); font-weight: 600; }
+  tbody tr:last-child td { border-bottom: none; }
+  td .dot { margin-right: 8px; }
+  .footnote { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 12px; }
+  .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .toggle button {
+    border: 0;
+    background: transparent;
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  .toggle button + button { border-left: 1px solid var(--border); }
+  .toggle button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  select {
+    font: inherit;
+    font-size: 0.95rem;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    max-width: 100%;
+  }
+  .chart-box { position: relative; height: 320px; }
+  .chart-box + h2 { margin-top: 24px; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    margin-top: 8px;
+    padding: 16px 0 32px;
+    color: var(--text-2);
+    font-size: 0.95rem;
+  }
+  a { color: var(--accent); }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 1.35rem; }
+    #map { height: 320px; }
+    .chart-box { height: 260px; }
+    section.card { padding: 12px; }
+    th, td { padding: 8px 4px; font-size: 0.9rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Mountain View Area Rainfall</h1>
+    <p class="updated">Data updated: <span id="updated">loading…</span></p>
+  </header>
+
+  <div class="notice">
+    For emergencies, flood warnings and safety information, check the Santa Clara Valley Water website
+    (<a href="https://www.valleywater.org/">valleywater.org</a>) and official local alerts.
+    This page must not be used for flood or safety decisions.
+  </div>
+
+  <div id="error" class="error" role="alert" hidden></div>
+
+  <section class="card">
+    <h2>Rain in the last 24 hours</h2>
+    <p class="sub">Tap a gauge for details.</p>
+    <div id="map"></div>
+    <div id="legend" class="legend" aria-label="Map legend"></div>
+    <p id="map-note" class="map-note" hidden>The map background didn't load, but the gauge markers still work.</p>
+  </section>
+
+  <section class="card">
+    <h2>Summary</h2>
+    <p class="sub">Rain in inches. Periods end at the latest hour in the data.</p>
+    <table>
+      <thead><tr><th>Gauge</th><th>Last 24 hours</th><th>Last 7 days</th><th>Season total</th></tr></thead>
+      <tbody id="summary"></tbody>
+    </table>
+    <p id="summary-note" class="footnote" hidden>* Some hours in this period have no reading, so the actual amount may be higher.</p>
+  </section>
+
+  <section class="card" id="charts">
+    <div class="controls">
+      <div class="toggle" role="group" aria-label="Time range">
+        <button type="button" data-hours="24" aria-pressed="false">24 hours</button>
+        <button type="button" data-hours="168" aria-pressed="true">7 days</button>
+        <button type="button" data-hours="720" aria-pressed="false">30 days</button>
+      </div>
+    </div>
+
+    <h2>Season total</h2>
+    <p class="sub">Running total for the rain season, in inches. Times are PST, as reported by the district.</p>
+    <div class="chart-box"><canvas id="totals-chart" aria-label="Line chart of season totals for each gauge"></canvas></div>
+
+    <h2 id="hourly">Hourly rain</h2>
+    <div class="controls">
+      <label for="gauge-select">Gauge:</label>
+      <select id="gauge-select"></select>
+    </div>
+    <p class="sub">Rain in each hour, in inches. Times are PST, as reported by the district.</p>
+    <div class="chart-box"><canvas id="hourly-chart" aria-label="Bar chart of hourly rain for the selected gauge"></canvas></div>
+  </section>
+
+  <footer>
+    Data: Santa Clara Valley Water ALERT system (<a href="https://alert.valleywater.org/">alert.valleywater.org</a>).
+    Readings are preliminary and unreviewed, may contain errors or gaps, and may be revised by the district.
+    This is an independent personal project and is not affiliated with or endorsed by Santa Clara Valley Water.
+    Data is provided as is, with no guarantee of accuracy, completeness or timeliness, and the author is not
+    responsible for any decisions made from it.
+    Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"
+        integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG" crossorigin="anonymous"></script>
+<script>
+"use strict";
+
+const HOUR_MS = 3600000;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// Rain in the last 24 hours -> marker color and size (inches; lower bound of each class)
+const RAIN_CLASSES = [
+  { min: 0,    label: "None",          color: "--r0", radius: 7 },
+  { min: 0.01, label: "Under 0.10 in", color: "--r1", radius: 9 },
+  { min: 0.10, label: "0.10 to 0.49 in", color: "--r2", radius: 11 },
+  { min: 0.50, label: "0.50 to 0.99 in", color: "--r3", radius: 13 },
+  { min: 1.00, label: "1 in or more",  color: "--r4", radius: 15 },
+];
+
+const state = { gauges: [], latest: null, hours: 168, selected: null, charts: {} };
+
+// ---------- helpers ----------
+
+function css(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function showError(message) {
+  const box = document.getElementById("error");
+  const p = document.createElement("p");
+  p.style.margin = "0";
+  p.textContent = message;
+  box.appendChild(p);
+  box.hidden = false;
+}
+
+// Times in the files are "YYYY-MM-DD HH:MM" in PST. We turn them into a plain hour
+// number (treated as UTC internally) so the browser's own time zone never shifts them.
+function toHour(text) {
+  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(text || "");
+  return m ? Date.UTC(+m[1], m[2] - 1, +m[3], +m[4]) / HOUR_MS : null;
+}
+
+function hourDate(h) { return new Date(h * HOUR_MS); }
+
+function fmtHour(h) {
+  const d = hourDate(h);
+  const hr = d.getUTCHours();
+  const ampm = hr < 12 ? "AM" : "PM";
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${hr % 12 || 12} ${ampm}`;
+}
+
+function fmtDay(h) {
+  const d = hourDate(h);
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
+}
+
+function fmtIn(v) { return v == null ? "–" : v.toFixed(2); }
+
+function num(text) {
+  if (text == null) return null;
+  const s = String(text).trim();
+  if (s === "") return null;
+  const v = Number(s);
+  return Number.isFinite(v) ? v : null;
+}
+
+// Small CSV reader (handles quoted fields, blank values and Windows line endings).
+function parseCSV(text) {
+  const rows = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    const cells = [];
+    let cur = "", quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (quoted) {
+        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (c === '"') quoted = false;
+        else cur += c;
+      } else if (c === '"') quoted = true;
+      else if (c === ",") { cells.push(cur); cur = ""; }
+      else cur += c;
+    }
+    cells.push(cur);
+    rows.push(cells);
+  }
+  const header = (rows.shift() || []).map(h => h.trim());
+  return rows.map(r => Object.fromEntries(header.map((h, i) => [h, r[i] ?? ""])));
+}
+
+async function fetchText(url) {
+  const res = await fetch(url, { cache: "no-cache" });
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.text();
+}
+
+// ---------- data ----------
+
+async function loadData() {
+  let list;
+  try {
+    list = parseCSV(await fetchText("gauges.csv"));
+  } catch (e) {
+    showError("Sorry, the list of gauges couldn't be loaded, so there is nothing to show. Please try again later."
+      + (location.protocol === "file:" ? " (This page needs to be opened from its web address, not as a file.)" : ""));
+    return false;
+  }
+
+  const gauges = list.filter(g => (g.id || "").trim()).map((g, i) => ({
+    id: g.id.trim(),
+    name: (g.name || g.id).trim(),
+    lat: num(g.lat),
+    lon: num(g.lon),
+    color: `--s${(i % 8) + 1}`,
+    byHour: new Map(),
+    first: null,
+    last: null,
+    ok: false,
+  }));
+
+  const results = await Promise.allSettled(gauges.map(g => fetchText(`data/${g.id}.csv`)));
+  const failed = [];
+  results.forEach((r, i) => {
+    const g = gauges[i];
+    if (r.status !== "fulfilled") { failed.push(g.name); return; }
+    for (const row of parseCSV(r.value)) {
+      const h = toHour(row.hour_pst);
+      if (h == null) continue;
+      g.byHour.set(h, { total: num(row.season_total_in), rain: num(row.rain_in_hour) });
+      if (g.first == null || h < g.first) g.first = h;
+      if (g.last == null || h > g.last) g.last = h;
+    }
+    g.ok = g.byHour.size > 0;
+    if (!g.ok) failed.push(g.name);
+  });
+  if (failed.length) {
+    showError(`Sorry, data for ${failed.join(", ")} couldn't be loaded right now. The other gauges are shown below.`);
+  }
+
+  state.gauges = gauges;
+  const lasts = gauges.filter(g => g.ok).map(g => g.last);
+  state.latest = lasts.length ? Math.max(...lasts) : null;
+  state.selected = (gauges.find(g => g.ok) || gauges[0] || {}).id;
+  return true;
+}
+
+// Sum of rain in the `hours` hours ending at the latest hour. `missing` counts hours with no value.
+function rainOver(g, hours) {
+  if (!g.ok || state.latest == null) return { sum: null, missing: hours };
+  let sum = 0, missing = 0, any = false;
+  for (let h = state.latest - hours + 1; h <= state.latest; h++) {
+    const r = g.byHour.get(h);
+    if (r && r.rain != null) { sum += r.rain; any = true; } else missing++;
+  }
+  return { sum: any ? Math.round(sum * 100) / 100 : null, missing };
+}
+
+// Latest season total that isn't blank.
+function seasonTotal(g) {
+  if (!g.ok) return { value: null, hour: null };
+  for (let h = g.last; h >= g.first; h--) {
+    const r = g.byHour.get(h);
+    if (r && r.total != null) return { value: r.total, hour: h };
+  }
+  return { value: null, hour: null };
+}
+
+// Rain per calendar day (PST) for the last 7 days, ending with the latest day.
+function dailyRain(g) {
+  const lastDay = Math.floor(state.latest / 24);
+  const days = [];
+  for (let d = lastDay - 6; d <= lastDay; d++) {
+    let sum = 0, any = false;
+    for (let h = d * 24; h < d * 24 + 24; h++) {
+      const r = g.byHour.get(h);
+      if (r && r.rain != null) { sum += r.rain; any = true; }
+    }
+    days.push({ label: fmtDay(d * 24), value: any ? Math.round(sum * 100) / 100 : null });
+  }
+  return days;
+}
+
+function rainClass(v) {
+  let cls = RAIN_CLASSES[0];
+  for (const c of RAIN_CLASSES) if (v != null && v >= c.min) cls = c;
+  return cls;
+}
+
+// ---------- header and table ----------
+
+function renderHeader() {
+  document.getElementById("updated").textContent = state.latest == null
+    ? "no data available"
+    : `${fmtHour(state.latest)} hour (PST, as reported by the district)`;
+}
+
+function renderSummary() {
+  const body = document.getElementById("summary");
+  body.textContent = "";
+  let anyMissing = false;
+  for (const g of state.gauges) {
+    const d1 = rainOver(g, 24), d7 = rainOver(g, 168), season = seasonTotal(g);
+    const tr = document.createElement("tr");
+    const name = document.createElement("td");
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = css(g.color);
+    name.append(dot, g.name);
+    tr.appendChild(name);
+    for (const r of [d1, d7]) {
+      const td = document.createElement("td");
+      td.textContent = fmtIn(r.sum) + (r.sum != null && r.missing ? "*" : "");
+      if (r.sum != null && r.missing) anyMissing = true;
+      tr.appendChild(td);
+    }
+    const td = document.createElement("td");
+    td.textContent = fmtIn(season.value);
+    tr.appendChild(td);
+    body.appendChild(tr);
+  }
+  document.getElementById("summary-note").hidden = !anyMissing;
+}
+
+// ---------- map ----------
+
+function renderMap() {
+  const el = document.getElementById("map");
+  if (typeof L === "undefined") {
+    el.innerHTML = '<p class="map-message">Sorry, the map couldn\'t be loaded. The table and charts below still work.</p>';
+    return;
+  }
+  const map = L.map(el, { scrollWheelZoom: false });
+  const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+  }).addTo(map);
+  tiles.on("tileerror", () => { document.getElementById("map-note").hidden = false; });
+
+  const placed = state.gauges.filter(g => g.lat != null && g.lon != null);
+  for (const g of placed) {
+    const r24 = rainOver(g, 24).sum;
+    const cls = rainClass(g.ok ? r24 : null);
+    const marker = L.circleMarker([g.lat, g.lon], {
+      radius: cls.radius,
+      color: css("--ring"),
+      weight: 2,
+      fillColor: css(g.ok ? cls.color : "--r0"),
+      fillOpacity: g.ok ? 1 : 0.35,
+    }).addTo(map);
+    marker.bindTooltip(g.name);
+    marker.bindPopup(() => popupContent(g), { minWidth: 230, maxWidth: 260 });
+    marker.on("popupopen", e => drawMiniChart(g, e.popup));
+    marker.on("popupclose", () => {
+      if (state.charts.mini) { state.charts.mini.destroy(); state.charts.mini = null; }
+    });
+  }
+  if (placed.length) {
+    map.fitBounds(L.latLngBounds(placed.map(g => [g.lat, g.lon])), { padding: [24, 24] });
+  } else {
+    map.setView([37.37, -122.08], 11);
+  }
+
+  const legend = document.getElementById("legend");
+  const title = document.createElement("b");
+  title.textContent = "Rain, last 24 hours:";
+  legend.appendChild(title);
+  for (const c of RAIN_CLASSES) {
+    const item = document.createElement("span");
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = css(c.color);
+    dot.style.width = dot.style.height = `${c.radius + 3}px`;
+    item.append(dot, c.label);
+    legend.appendChild(item);
+  }
+  state.map = map;
+}
+
+function popupContent(g) {
+  const div = document.createElement("div");
+  div.className = "pop";
+  const h = document.createElement("h3");
+  h.textContent = g.name;
+  div.appendChild(h);
+  if (!g.ok) {
+    const p = document.createElement("p");
+    p.className = "note";
+    p.textContent = "Data for this gauge couldn't be loaded.";
+    div.appendChild(p);
+    return div;
+  }
+  const d1 = rainOver(g, 24), d7 = rainOver(g, 168), season = seasonTotal(g);
+  const dl = document.createElement("dl");
+  for (const [label, value] of [
+    ["Last 24 hours", fmtIn(d1.sum) + " in"],
+    ["Last 7 days", fmtIn(d7.sum) + " in"],
+    ["Season total", fmtIn(season.value) + " in"],
+  ]) {
+    const dt = document.createElement("dt"); dt.textContent = label;
+    const dd = document.createElement("dd"); dd.textContent = value;
+    dl.append(dt, dd);
+  }
+  div.appendChild(dl);
+  if (g.last < state.latest) {
+    const p = document.createElement("p");
+    p.className = "note";
+    p.textContent = `Last reading: ${fmtHour(g.last)} PST`;
+    div.appendChild(p);
+  }
+  const t = document.createElement("div");
+  t.className = "mini-title";
+  t.textContent = "Rain per day, last 7 days (in)";
+  const box = document.createElement("div");
+  box.className = "mini";
+  box.appendChild(document.createElement("canvas"));
+  const link = document.createElement("a");
+  link.href = "#hourly";
+  link.textContent = "View full details";
+  link.addEventListener("click", e => {
+    e.preventDefault();
+    selectGauge(g.id);
+    if (state.map) state.map.closePopup();
+    document.getElementById("hourly").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  div.append(t, box, link);
+  return div;
+}
+
+function drawMiniChart(g, popup) {
+  if (typeof Chart === "undefined" || !g.ok) return;
+  const canvas = popup.getElement().querySelector(".mini canvas");
+  if (!canvas) return;
+  if (state.charts.mini) state.charts.mini.destroy();
+  const days = dailyRain(g);
+  state.charts.mini = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: days.map(d => d.label),
+      datasets: [{
+        data: days.map(d => d.value),
+        backgroundColor: css("--accent"),
+        borderRadius: 4,
+        borderSkipped: "bottom",
+        maxBarThickness: 18,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => c.raw == null ? "No data" : `${c.raw.toFixed(2)} in` } },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: css("--text-2"), font: { size: 10 }, maxRotation: 0, autoSkip: true } },
+        y: { beginAtZero: true, suggestedMax: 0.1, grid: { color: css("--grid") }, border: { display: false },
+             ticks: { color: css("--text-2"), font: { size: 10 }, maxTicksLimit: 4 } },
+      },
+    },
+  });
+}
+
+// ---------- charts ----------
+
+function windowHours() {
+  const hours = [];
+  for (let h = state.latest - state.hours + 1; h <= state.latest; h++) hours.push(h);
+  return hours;
+}
+
+// Which hours get an x-axis label: every 3 hours for 24 hours, otherwise at midnight
+// every day (7 days) or every 5 days (30 days). Phones get half as many.
+function axisLabel(h) {
+  const narrow = window.innerWidth < 600;
+  if (state.hours <= 24) {
+    const step = narrow ? 6 : 3, hr = h % 24;
+    if (hr % step) return null;
+    return hr === 0 ? fmtDay(h) : fmtHour(h).split(", ")[1];
+  }
+  const everyDays = (state.hours <= 168 ? 1 : 5) * (narrow ? 2 : 1);
+  const day = Math.floor(h / 24);
+  return h % 24 === 0 && day % everyDays === 0 ? fmtDay(h) : null;
+}
+
+function commonOptions(yTitle) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { labels: { color: css("--text"), usePointStyle: true, pointStyle: "circle", boxWidth: 8, boxHeight: 8 } },
+      tooltip: {
+        callbacks: {
+          title: items => items.length ? `${fmtHour(state.windowHours[items[0].dataIndex])} PST` : "",
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: css("--text-2"),
+          maxRotation: 0,
+          autoSkip: false,
+          callback: function (value, index) { return axisLabel(state.windowHours[index]); },
+        },
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: css("--grid") },
+        border: { display: false },
+        ticks: { color: css("--text-2"), maxTicksLimit: 6 },
+        title: { display: true, text: yTitle, color: css("--text-2") },
+      },
+    },
+  };
+}
+
+function renderTotalsChart() {
+  const hours = state.windowHours;
+  const datasets = state.gauges.filter(g => g.ok).map(g => ({
+    label: g.name,
+    data: hours.map(h => { const r = g.byHour.get(h); return r && r.total != null ? r.total : null; }),
+    borderColor: css(g.color),
+    backgroundColor: css(g.color),
+    borderWidth: 2,
+    pointRadius: 0,
+    pointHoverRadius: 4,
+    spanGaps: false,
+    tension: 0,
+  }));
+  const options = commonOptions("inches");
+  options.plugins.legend.position = "bottom";
+  options.plugins.tooltip.callbacks.label = c => `${c.dataset.label}: ${c.raw == null ? "no data" : c.raw.toFixed(2) + " in"}`;
+  if (state.charts.totals) state.charts.totals.destroy();
+  state.charts.totals = new Chart(document.getElementById("totals-chart"), {
+    type: "line",
+    data: { labels: hours.map(String), datasets },
+    options,
+  });
+}
+
+function renderHourlyChart() {
+  const g = state.gauges.find(x => x.id === state.selected);
+  const hours = state.windowHours;
+  const data = hours.map(h => { const r = g && g.byHour.get(h); return r && r.rain != null ? r.rain : null; });
+  const options = commonOptions("inches");
+  options.plugins.legend.display = false;
+  options.scales.y.suggestedMax = 0.1;
+  options.plugins.tooltip.callbacks.label = c => c.raw == null ? "No reading" : `${c.raw.toFixed(2)} in`;
+  if (state.charts.hourly) state.charts.hourly.destroy();
+  state.charts.hourly = new Chart(document.getElementById("hourly-chart"), {
+    type: "bar",
+    data: {
+      labels: hours.map(String),
+      datasets: [{
+        label: g ? g.name : "",
+        data,
+        backgroundColor: css("--accent"),
+        borderRadius: state.hours <= 168 ? 4 : 1,
+        borderSkipped: "bottom",
+        maxBarThickness: 24,
+      }],
+    },
+    options,
+  });
+}
+
+function renderCharts() {
+  if (state.latest == null) return;
+  if (typeof Chart === "undefined") {
+    for (const id of ["totals-chart", "hourly-chart"]) {
+      document.getElementById(id).parentElement.innerHTML =
+        '<p class="map-message">Sorry, the chart couldn\'t be loaded. Please try again later.</p>';
+    }
+    return;
+  }
+  state.windowHours = windowHours();
+  renderTotalsChart();
+  renderHourlyChart();
+}
+
+function selectGauge(id) {
+  state.selected = id;
+  document.getElementById("gauge-select").value = id;
+  if (typeof Chart !== "undefined" && state.latest != null) renderHourlyChart();
+}
+
+function setupControls() {
+  const select = document.getElementById("gauge-select");
+  for (const g of state.gauges) {
+    const opt = document.createElement("option");
+    opt.value = g.id;
+    opt.textContent = g.ok ? g.name : `${g.name} (no data)`;
+    opt.disabled = !g.ok;
+    select.appendChild(opt);
+  }
+  select.value = state.selected;
+  select.addEventListener("change", () => selectGauge(select.value));
+
+  for (const btn of document.querySelectorAll(".toggle button")) {
+    btn.addEventListener("click", () => {
+      state.hours = Number(btn.dataset.hours);
+      for (const b of document.querySelectorAll(".toggle button")) {
+        b.setAttribute("aria-pressed", String(b === btn));
+      }
+      if (typeof Chart !== "undefined" && state.latest != null) renderCharts();
+    });
+  }
+}
+
+async function main() {
+  if (!(await loadData())) {
+    document.getElementById("updated").textContent = "not available";
+    return;
+  }
+  renderHeader();
+  renderSummary();
+  setupControls();
+  try { renderMap(); } catch (e) {
+    console.error(e);
+    document.getElementById("map").innerHTML =
+      '<p class="map-message">Sorry, the map couldn\'t be loaded. The table and charts below still work.</p>';
+  }
+  try { renderCharts(); } catch (e) {
+    console.error(e);
+    showError("Sorry, the charts couldn't be drawn. The map and table above still work.");
+  }
+}
+
+main();
+</script>
+</body>
+</html>
