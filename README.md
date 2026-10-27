@@ -7,8 +7,10 @@ A dashboard page will be added later and hosted free on GitHub Pages.
 ## How it works
 
 - **`gauges.csv`** is the list of rain gauges to collect. To add a gauge, add a
-  line with its ID number and name (the ID is in the gauge's link on the
-  district's site).
+  line with its ID number, name, latitude and longitude. The ID is in the
+  gauge's link on the district's site. Coordinates come from the district's
+  sensor list at https://alertdata.valleywater.org/Sensor/all (look up the
+  gauge's `gageId` and copy its `latitude` and `longitude`).
 - **`collect.py`** downloads each gauge's report page once. The page lists
   readings every 5 minutes; the collector keeps one row per hour and saves it
   to **`data/<gauge id>.csv`**. New hours are added to the history, and hours it
