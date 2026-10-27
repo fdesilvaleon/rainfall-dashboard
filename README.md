@@ -14,8 +14,8 @@ A dashboard page will be added later and hosted free on GitHub Pages.
   to **`data/<gauge id>.csv`**. New hours are added to the history, and hours it
   already has are not saved twice.
 - **`test_collect.py`** checks the collector works (run `python -m unittest`).
-- **GitHub Actions** runs the collector automatically every 6 hours (about 6 am, noon,
-  6 pm and midnight Pacific time) and saves any
+- **GitHub Actions** runs the collector automatically every hour (at 17 minutes
+  past the hour) and saves any
   new data back to this repository. You can also run it any time from the
   **Actions** tab ("Collect rainfall data" → "Run workflow"), for example
   during a storm. Each run reads the last 30 days, so no readings are lost
