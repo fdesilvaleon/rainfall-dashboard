@@ -121,7 +121,8 @@
   }
   .leaflet-tooltip.gauge-label::before { display: none; }
   /* OpenStreetMap tiles, made light and quiet. If they fail, the map's plain light background shows. */
-  .quiet-tiles { filter: grayscale(1) contrast(0.7) brightness(1.12); }
+  .quiet-tiles { filter: grayscale(1) contrast(0.42) brightness(1.4); }
+  .quiet-tiles .leaflet-tile { mix-blend-mode: normal; }  /* avoids light seams between tiles at in-between zoom levels */
   .gauge-icon { background: none; border: 0; display: flex; align-items: flex-end; justify-content: center; }
   .gauge-icon svg { display: block; margin-bottom: 4px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
   .gauge-icon:focus { outline: none; }
