@@ -1,125 +1,78 @@
-"""Download rain gauge readings from valleywateralert.org and save hourly data to data/<id>.csv.
+"""Hourly collector, run by GitHub Actions.
 
-The district's pages list 5-minute readings of the cumulative season total (inches).
-We keep one row per hour: the last reading in that hour, plus rain_in_hour, which is
-this hour's season total minus the previous hour's. Times are Pacific Standard Time,
-as shown on the district's site, and each hour is labeled by its start (08:00 = 08:00-08:59).
+For each gauge in gauges.csv it asks the district's API for the last 48 hours of
+rain and updates:
+  data/<id>.csv                hourly rain for the current and previous water year
+  data/history/<id>_daily.csv  daily rain history
+  data/stats.json              statistics for the website (recomputed every run)
+
+Polite access: one request per gauge, at least 5 seconds apart. On an error or
+timeout a request is tried again at most twice (after 30 s, then 2 min). If it
+still fails, that gauge is skipped until the next run, which catches up.
 """
-import csv
-import re
 import sys
-import time
-import urllib.request
-from datetime import datetime, timedelta
-from decimal import Decimal
-from pathlib import Path
+from datetime import datetime, time as dtime, timedelta
 
-ROOT = Path(__file__).parent
-GAUGES_FILE = ROOT / "gauges.csv"
-DATA_DIR = ROOT / "data"
-REPORT_URL = "https://valleywateralert.org/scvwd/reports/pgi_report.php?id={id}"
-USER_AGENT = "mountain-view-rainfall-dashboard (personal, hourly; GitHub Pages project)"
-PAUSE_SECONDS = 2  # wait between gauges so we don't hit the server all at once
+import rainfall as rf
 
-ROW_RE = re.compile(r"<tr><td[^>]*>(.*?)</td><td[^>]*>(.*?)</td></tr>")
-NUMBER_RE = re.compile(r"^-?\d+(\.\d+)?$")
-TIME_FORMAT = "%Y-%m-%d %H:%M"
-FIELDS = ["hour_pst", "season_total_in", "rain_in_hour"]
+GAP_SECONDS = 5
+WINDOW_HOURS = 48
+GAP_LOOKBACK_DAYS = 30  # hours missing this recently are filled in (by starting the one request earlier)
 
 
-def load_gauges():
-    with open(GAUGES_FILE, newline="") as f:
-        return [row for row in csv.DictReader(f) if row["id"].strip()]
+def first_missing_hour(rain, first, last):
+    for h in rf.hours_between(first, last):
+        if rain.get(h) is None:
+            return h
+    return None
 
 
-def fetch(gauge_id):
-    req = urllib.request.Request(REPORT_URL.format(id=gauge_id), headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return resp.read().decode("latin-1")
+def update_gauge(gauge, now, fetch):
+    """Fetch recent rain for one gauge and update its files. Returns (number of rainy values, first day fetched)."""
+    gid = gauge["id"]
+    hourly_path = rf.DATA_DIR / f"{gid}.csv"
+    daily_path = rf.HISTORY_DIR / f"{gid}_daily.csv"
+    current_hour = rf.hour_of(now)
+    keep_from = datetime.combine(rf.wy_start(rf.water_year(now) - 1), dtime())
 
+    rain = rf.read_hourly(hourly_path)
+    start_day = (now - timedelta(hours=WINDOW_HOURS)).date()
+    look_from = max(keep_from, datetime.combine((now - timedelta(days=GAP_LOOKBACK_DAYS)).date(), dtime()))
+    gap = first_missing_hour(rain, look_from, current_hour)
+    if gap is not None and gap.date() < start_day:
+        start_day = gap.date()
 
-def parse(html):
-    """Return {datetime: value} of 5-minute readings from a report page. Value is '' when missing ("----")."""
-    readings = {}
-    for raw_time, raw_value in ROW_RE.findall(html):
-        try:
-            t = datetime.strptime(raw_time.strip(), "%m/%d/%Y %I:%M:%S %p")
-        except ValueError:
-            continue  # not a data row
-        value = raw_value.strip()
-        readings[t] = value if NUMBER_RE.match(value) else ""
-    return readings
+    readings = fetch(gid, start_day, now.date())
+    # Hours in the fetched period are replaced, so late or corrected readings are picked up.
+    rain.update(rf.hourly_totals(readings, datetime.combine(start_day, dtime()), current_hour))
 
+    daily = rf.read_daily(daily_path)
+    for d in rf.days_between(start_day, now.date()):
+        daily[d] = rf.day_total(rain, d)
+    rf.write_daily(daily_path, daily, min(daily), now.date())
 
-def to_hourly(readings):
-    """Return {hour label: season total} using the last non-missing reading in each hour ('' if none)."""
-    hourly = {}
-    for t in sorted(readings):
-        label = t.replace(minute=0, second=0).strftime(TIME_FORMAT)
-        if readings[t] != "" or label not in hourly:
-            hourly[label] = readings[t]
-    return hourly
-
-
-def add_rain_in_hour(totals):
-    """Return rows with rain_in_hour = this hour's total minus the previous hour's.
-
-    Blank if either value is missing, the previous hour isn't in the file, or the
-    difference is negative (for example when the season total resets).
-    """
-    rows = []
-    for label in sorted(totals):
-        previous = (datetime.strptime(label, TIME_FORMAT) - timedelta(hours=1)).strftime(TIME_FORMAT)
-        now, before = totals[label], totals.get(previous, "")
-        rain = ""
-        if now != "" and before != "":
-            diff = Decimal(now) - Decimal(before)
-            if diff >= 0:
-                rain = str(diff)
-        rows.append([label, now, rain])
-    return rows
-
-
-def merge(path, new_hourly):
-    """Merge new hourly totals into the gauge's file. Returns how many hours were added or changed."""
-    totals = {}
-    if path.exists():
-        with open(path, newline="") as f:
-            totals = {row["hour_pst"]: row["season_total_in"] for row in csv.DictReader(f)}
-    changed = 0
-    for label, value in new_hourly.items():
-        old = totals.get(label)
-        # New hours are added. Hours we already have are updated with the latest page
-        # (the current hour fills in as the hour goes on), but a blank never replaces a number.
-        if old is None or (value != "" and value != old):
-            totals[label] = value
-            changed += 1
-    if changed or not path.exists():
-        with open(path, "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerow(FIELDS)
-            writer.writerows(add_rain_in_hour(totals))
-    return changed
+    rf.DATA_DIR.mkdir(exist_ok=True)
+    rain = {h: v for h, v in rain.items() if keep_from <= h <= current_hour}
+    rf.write_hourly(hourly_path, rain, keep_from, current_hour)
+    return len(readings), start_day
 
 
 def main():
-    DATA_DIR.mkdir(exist_ok=True)
-    gauges = load_gauges()
+    gauges = rf.load_gauges()
+    now = rf.now_pst()
+    pacer = rf.Pacer(GAP_SECONDS)
     failures = 0
-    for i, gauge in enumerate(gauges):
-        if i:
-            time.sleep(PAUSE_SECONDS)
-        gid, name = gauge["id"].strip(), gauge["name"].strip()
+    for g in gauges:
         try:
-            readings = parse(fetch(gid))
-            if not readings:
-                raise ValueError("no readings found on the page")
-            hourly = to_hourly(readings)
-            changed = merge(DATA_DIR / f"{gid}.csv", hourly)
-            print(f"{gid} {name}: {len(readings)} readings on page ({len(hourly)} hours), {changed} hours new or updated")
+            n, start = update_gauge(g, now, lambda gid, a, b: rf.fetch_rain(gid, a, b, pacer))
+            print(f"{g['id']} {g['name']}: {n} rainy 15-minute periods since {start}")
         except Exception as e:
             failures += 1
-            print(f"{gid} {name}: FAILED ({e})", file=sys.stderr)
+            print(f"{g['id']} {g['name']}: SKIPPED this run ({e})", file=sys.stderr)
+    try:
+        rf.write_stats(gauges, now.date())
+    except Exception as e:
+        print(f"Statistics not updated ({e})", file=sys.stderr)
     # Only report failure if every gauge failed, so one bad gauge doesn't stop the others being saved.
     if failures == len(gauges):
         sys.exit(1)

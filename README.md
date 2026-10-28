@@ -1,7 +1,8 @@
 # Mountain View Rainfall Dashboard
 
 This project collects rainfall readings for the Mountain View area from the
-[Santa Clara Valley Water District's ALERT rain gauges](https://valleywateralert.org/scvwd/pgi.php).
+Santa Clara Valley Water District's ALERT rain gauges, using the district's
+[Surface Water Data API](https://alertdata.valleywater.org/api.html).
 
 **Dashboard:** https://fdesilvaleon.github.io/rainfall-dashboard/
 
@@ -16,41 +17,92 @@ collected.
 
 ## How it works
 
-- **`gauges.csv`** is the list of rain gauges to collect. To add a gauge, add a
-  line with its ID number, name, latitude and longitude. The ID is in the
-  gauge's link on the district's site. Coordinates come from the district's
-  sensor list at https://alertdata.valleywater.org/Sensor/all (look up the
-  gauge's `gageId` and copy its `latitude` and `longitude`).
-- **`collect.py`** downloads each gauge's report page once. The page lists
-  readings every 5 minutes; the collector keeps one row per hour and saves it
-  to **`data/<gauge id>.csv`**. New hours are added to the history, and hours it
-  already has are not saved twice.
-- **`test_collect.py`** checks the collector works (run `python -m unittest`).
-- **GitHub Actions** runs the collector automatically every hour (at 17 minutes
-  past the hour) and saves any
-  new data back to this repository. You can also run it any time from the
-  **Actions** tab ("Collect rainfall data" → "Run workflow"), for example
-  during a storm. Each run reads the last 30 days, so no readings are lost
-  between runs.
+- **`gauges.csv`** is the list of rain gauges. To add a gauge, add a line with
+  its ID number, name, latitude and longitude. IDs and coordinates are in the
+  district's sensor list at https://alertdata.valleywater.org/Sensor/all (look
+  up the gauge's `gageId` and copy its `latitude` and `longitude`). Then run
+  `python backfill.py <id>` once to download its history.
+- **`collect.py`** runs every hour on GitHub Actions (at 17 minutes past the
+  hour). For each gauge it asks the API for the last 48 hours of rain and
+  updates the files below. If recent hours are missing (for example after
+  GitHub skipped some runs), the same request simply starts earlier, up to 30
+  days back. It then recomputes `data/stats.json`.
+- **`backfill.py`** downloads the history (the last 15 full water years). It
+  was run once by hand and is not scheduled.
+- **`rainfall.py`** holds the code the two scripts share.
+- **`test_rainfall.py`** checks the code works without contacting the API
+  (run `python -m unittest`). GitHub Actions runs it before each collection.
+- **`legacy/`** holds the old collector, which read the district's report
+  pages. It is kept for reference only and is not scheduled.
+
+You can also run the collector any time from the **Actions** tab ("Collect
+rainfall data" → "Run workflow"), for example during a storm.
+
+### Polite access to the district's API
+
+The district asked that requests stay at about one every few minutes at most.
+
+- Each hourly run makes **one request per gauge** (7 in all), at least
+  **5 seconds apart**, and asks only for the last 48 hours.
+- If a request fails or times out, it is tried again **at most twice**, after
+  30 seconds and then 2 minutes. If it still fails, that gauge is skipped until
+  the next hour, which catches up.
+- Requests ask only for 15-minute periods with rain (`skipZeroValues=true`),
+  which keeps answers small.
+- Every request identifies the project with the User-Agent
+  `rainfall-dashboard personal project (github.com/fdesilvaleon/rainfall-dashboard)`.
+- The history download made one request per gauge, at least 10 seconds apart.
 
 ## About the data
 
-Each file has one row per hour, with three columns:
+**Water years** run from **Oct 1 to Sep 30** and are named by both years, for
+example "2025-26". All times and days are **Pacific Standard Time (PST) all year**,
+as the district reports them.
 
-- `hour_pst`: the start of the hour, in Pacific Standard Time as reported by the
-  district (for example `08:00` covers 08:00 to 08:59).
-- `season_total_in`: the **running total for the rain season** in inches, taken
-  from the last reading in that hour, exactly as reported.
-- `rain_in_hour`: rain in that hour (this hour's season total minus the
-  previous hour's). It is blank if either value is missing, or if the total went
-  down (for example when a new season starts).
+The API gives the rain in each 15-minute period. A value stamped 02:00 is the
+rain from 01:45 to 02:00, so it counts in the 01:00 hour (and a value stamped
+midnight counts in the day before).
 
-Other details:
+### `data/<gauge id>.csv`: hourly, current and previous water year
 
-- A reading of "----" means the gauge reported nothing. The collector uses the
-  last real reading in the hour. If there isn't one, the season total is blank.
-- The most recent hour is updated on later runs as the hour fills in.
-- The data is preliminary and may contain errors, as noted on the district's site.
+- `hour_pst`: the start of the hour (`08:00` covers 08:00 to 08:59).
+- `season_total_in`: rain since Oct 1, in inches (rounded to 2 decimals, like
+  the district's portal).
+- `rain_in_hour`: rain in that hour, in inches (4 decimals, so sums stay
+  accurate).
+
+Blank values mean there is no data for that hour. The most recent hour is
+updated on later runs as it fills in, and the last 48 hours are refreshed every
+run, so late or corrected readings are picked up.
+
+### `data/history/<gauge id>_daily.csv`: daily, last 15 full water years
+
+Columns `date` and `rain_in` (inches), from Oct 1, 2011, updated every hour.
+A blank value means no data (before the gauge's records start).
+
+### `data/stats.json`: statistics for the website
+
+Recomputed every run. For each gauge, and for each day of the water year
+(Oct 1 to Sep 30, including Feb 29), it has:
+
+- `average`, `min`, `max`: rain since Oct 1 up to that day, across **complete**
+  prior water years;
+- `last_year`: the same for last water year;
+- `average_season_total`, `years_used`, `water_years_used`, `date_range`;
+- `excluded_years` (with the reason), `suspected_outages`, and
+  `limited_history` (true if fewer than 5 complete years).
+
+A water year is **complete** if at least 95% of its days have data. Only the
+last 15 full water years are considered, and the current (unfinished) water
+year is never included.
+
+**Missing data:** the API reports 0 both when it didn't rain and when a gauge
+wasn't reporting. So a gauge outage looks like a dry spell. A dry spell is
+treated as a **suspected outage** (and its days count as missing) if the other
+gauges clearly got rain at the same time: a median of at least 0.5 in on one
+day, or at least 1 in over the spell.
+
+The data is preliminary and may contain errors, as noted by the district.
 
 ## Attribution and disclaimer
 

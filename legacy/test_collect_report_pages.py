@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import collect
+import collect_report_pages as collect
 
 
 def page(*rows):
