@@ -1,8 +1,8 @@
-id,name,lat,lon
-6121,Mountain View,37.3943,-122.06
-6140,Rancho San Antonio,37.33,-122.118
-6100,Stevens Creek Reservoir,37.2875,-122.079
-6048,Sunnyvale Hamilton WTP,37.3553,-122.059
-6129,Palo Alto,37.4556,-122.101
-6144,Maryknoll Fields,37.3322,-122.081
-6142,Trappers Trail,37.3461,-122.181
+id,name,lat,lon,label
+6121,Mountain View,37.3943,-122.06,Mountain View
+6140,Rancho San Antonio,37.33,-122.118,Rancho San Antonio
+6100,Stevens Creek Reservoir,37.2875,-122.079,Stevens Creek Res.
+6048,Sunnyvale Hamilton WTP,37.3553,-122.059,Sunnyvale Hamilton
+6129,Palo Alto,37.4556,-122.101,Palo Alto
+6144,Maryknoll Fields,37.3322,-122.081,Maryknoll Fields
+6142,Trappers Trail,37.3461,-122.181,Trappers Trail

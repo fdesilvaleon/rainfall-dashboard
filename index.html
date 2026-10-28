@@ -21,12 +21,15 @@
     --notice-bg: #f0efec;
     --error-bg: #fdecec;
     --error-text: #8a1f1f;
-    /* line chart: one fixed color per gauge, in gauges.csv order */
+    --tile-bg: #eef0f2;
+    /* line charts: one fixed color per gauge, in gauges.csv order */
     --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
     --s5: #e87ba4; --s6: #008300; --s7: #6250d6; --s8: #e34948;
-    /* map markers: rain in the last 24 hours, light to dark blue */
-    --r0: #b4b2a9; --r1: #86b6ef; --r2: #3987e5; --r3: #1c5cab; --r4: #0d366b;
-    --ring: #ffffff;
+    /* season chart */
+    --this-year: #2a78d6;
+    --last-year: #eb6834;
+    --average: #52514e;
+    --range: rgba(82, 81, 78, 0.13);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -42,10 +45,13 @@
       --notice-bg: #262624;
       --error-bg: #3a1c1c;
       --error-text: #f3b4b4;
+      --tile-bg: #222220;
       --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
       --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
-      --r0: #6b6a66; --r1: #86b6ef; --r2: #5598e7; --r3: #2a78d6; --r4: #184f95;
-      --ring: #1a1a19;
+      --this-year: #5598e7;
+      --last-year: #d95926;
+      --average: #c3c2b7;
+      --range: rgba(195, 194, 183, 0.16);
     }
   }
 
@@ -61,7 +67,9 @@
   h1 { margin: 0; font-size: 1.6rem; line-height: 1.25; }
   .updated { margin: 4px 0 0; color: var(--text-2); }
   h2 { font-size: 1.15rem; margin: 0 0 4px; }
+  h3 { font-size: 1rem; margin: 20px 0 4px; }
   .sub { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; }
+  a { color: var(--accent); }
 
   .notice {
     background: var(--notice-bg);
@@ -80,7 +88,16 @@
     padding: 10px 14px;
     margin: 0 0 16px;
   }
-  .error[hidden] { display: none; }
+  .error[hidden], .note[hidden] { display: none; }
+  .note {
+    margin: 10px 0 0;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: var(--notice-bg);
+    color: var(--text-2);
+    font-size: 0.9rem;
+  }
+  .message { padding: 16px 0; color: var(--text-2); }
 
   section.card {
     background: var(--surface);
@@ -90,51 +107,53 @@
     margin: 0 0 16px;
   }
 
-  #map {
-    height: 420px;
-    border-radius: 8px;
-    background: var(--notice-bg);
+  /* map: a plain location reference */
+  #map { height: 380px; border-radius: 8px; background: #f2f2f0; }
+  .leaflet-tooltip.gauge-label {
+    background: rgba(255, 255, 255, 0.88);
+    color: #1d1d1b;
+    border: 0;
+    box-shadow: none;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font: 600 12px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    white-space: nowrap;
   }
-  .map-message { padding: 24px; color: var(--text-2); }
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 14px;
-    margin: 10px 0 0;
-    font-size: 0.85rem;
-    color: var(--text-2);
-  }
-  .legend b { color: var(--text); font-weight: 600; }
-  .legend span.dot { margin-right: 6px; }
-  .map-note { margin: 6px 0 0; font-size: 0.85rem; color: var(--muted); }
-  .map-note[hidden] { display: none; }
+  .leaflet-tooltip.gauge-label::before { display: none; }
   .leaflet-interactive:focus { outline: none; }
-  .dot {
-    display: inline-block;
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    vertical-align: middle;
-  }
-
-  /* map popup card */
   .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--text); }
   .leaflet-popup-content { margin: 12px 14px; font-size: 0.9rem; line-height: 1.4; }
-  .pop h3 { margin: 0 0 6px; font-size: 1rem; }
+  .pop h4 { margin: 0 0 6px; font-size: 1rem; }
   .pop dl { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 0 0 8px; }
   .pop dt { color: var(--text-2); }
   .pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-  .pop .mini { position: relative; height: 110px; margin: 4px 0 8px; }
-  .pop .mini-title { color: var(--text-2); font-size: 0.8rem; }
-  .pop .note { color: var(--muted); font-size: 0.8rem; margin: 0 0 6px; }
-  .pop a { color: var(--accent); font-weight: 600; }
+  .pop a { font-weight: 600; }
 
+  /* tables */
+  .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
   th, td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: right; }
   th:first-child, td:first-child { text-align: left; }
-  th { font-size: 0.85rem; color: var(--text-2); font-weight: 600; }
+  th { font-size: 0.85rem; color: var(--text-2); font-weight: 600; vertical-align: bottom; }
   tbody tr:last-child td { border-bottom: none; }
   td .dot { margin-right: 8px; }
+  td.limited { color: var(--muted); font-style: italic; }
   .footnote { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
+  .footnote[hidden] { display: none; }
+  .scroll-hint { display: none; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; }
+
+  /* season progress tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 0; }
+  .tile { background: var(--tile-bg); border-radius: 10px; padding: 10px 12px; }
+  .tile .label { color: var(--text-2); font-size: 0.85rem; }
+  .tile .value { font-size: 1.5rem; font-weight: 650; font-variant-numeric: tabular-nums; line-height: 1.3; }
+  .tile .value.limited { font-size: 1rem; font-weight: 600; color: var(--muted); font-style: italic; padding-top: 6px; }
+  .tile .extra { color: var(--text-2); font-size: 0.85rem; font-variant-numeric: tabular-nums; }
+  .years { margin: 12px 0 0; color: var(--text-2); font-size: 0.9rem; }
+  .years details { margin-top: 4px; }
+  .years summary { cursor: pointer; color: var(--accent); }
+  .years ul { margin: 4px 0 0; padding-left: 20px; }
 
   .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 0 0 12px; }
   .toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
@@ -151,7 +170,7 @@
   .toggle button[aria-pressed="true"] { background: var(--accent); color: #fff; }
   select {
     font: inherit;
-    font-size: 0.95rem;
+    font-size: 1rem;
     padding: 6px 8px;
     border-radius: 8px;
     border: 1px solid var(--border);
@@ -159,8 +178,14 @@
     color: var(--text);
     max-width: 100%;
   }
+  .gauge-picker { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 4px; }
+  .gauge-picker label { font-weight: 600; }
   .chart-box { position: relative; height: 320px; }
-  .chart-box + h2 { margin-top: 24px; }
+
+  .definitions dl { margin: 0; }
+  .definitions dt { font-weight: 600; margin-top: 10px; }
+  .definitions dt:first-child { margin-top: 0; }
+  .definitions dd { margin: 2px 0 0; color: var(--text-2); }
 
   footer {
     border-top: 1px solid var(--border);
@@ -169,14 +194,18 @@
     color: var(--text-2);
     font-size: 0.95rem;
   }
-  a { color: var(--accent); }
+  footer p { margin: 0 0 8px; }
 
   @media (max-width: 600px) {
     h1 { font-size: 1.35rem; }
-    #map { height: 320px; }
+    #map { height: 300px; }
     .chart-box { height: 260px; }
     section.card { padding: 12px; }
-    th, td { padding: 8px 4px; font-size: 0.9rem; }
+    th, td { padding: 8px 5px; font-size: 0.88rem; }
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .tile .value { font-size: 1.25rem; }
+    th:first-child, td:first-child { position: sticky; left: 0; background: var(--surface); min-width: 112px; }
+    .scroll-hint { display: block; }
   }
 </style>
 </head>
@@ -196,52 +225,110 @@
   <div id="error" class="error" role="alert" hidden></div>
 
   <section class="card">
-    <h2>Rain in the last 24 hours</h2>
-    <p class="sub">Tap a gauge for details.</p>
+    <h2>Gauge locations</h2>
+    <p class="sub">Tap a gauge for its season so far.</p>
     <div id="map"></div>
-    <div id="legend" class="legend" aria-label="Map legend"></div>
-    <p id="map-note" class="map-note" hidden>The map background didn't load, but the gauge markers still work.</p>
   </section>
 
   <section class="card">
-    <h2>Summary</h2>
-    <p class="sub">Rain in inches. Periods end at the latest hour in the data.</p>
-    <table>
-      <thead><tr><th>Gauge</th><th>Last 24 hours</th><th>Last 7 days</th><th>Season total</th></tr></thead>
-      <tbody id="summary"></tbody>
-    </table>
-    <p id="summary-note" class="footnote" hidden>* Some hours in this period have no reading, so the actual amount may be higher.</p>
+    <h2>Season progress, all gauges</h2>
+    <p class="sub" id="season-sub">Rain in inches since Oct 1.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Gauge</th><th>Season to date</th><th>Normal to date</th><th>% of normal</th>
+          <th>Same date last year</th><th>Difference vs. last year</th><th>% of average season</th><th>Average based on</th>
+        </tr></thead>
+        <tbody id="season-table"></tbody>
+      </table>
+    </div>
+    <p class="footnote scroll-hint">Swipe the table sideways to see all columns.</p>
+    <p id="season-table-note" class="note" hidden>Early in the season these percentages swing widely because normal-to-date is small.</p>
   </section>
 
-  <section class="card" id="charts">
+  <section class="card" id="gauge">
+    <div class="gauge-picker">
+      <label for="gauge-select">Gauge:</label>
+      <select id="gauge-select"></select>
+    </div>
+
+    <h2 style="margin-top:12px">Season progress</h2>
+    <p class="sub" id="progress-sub">Rain in inches since Oct 1.</p>
+    <div id="progress"></div>
+    <p id="progress-note" class="note" hidden>Early in the season these percentages swing widely because normal-to-date is small.</p>
+    <div id="years" class="years"></div>
+
+    <h3>Rain since Oct 1, through the water year</h3>
+    <p class="sub">Cumulative rain in inches, Oct 1 to Sep 30.</p>
+    <div class="chart-box"><canvas id="season-chart" aria-label="Line chart of cumulative rain this water year, last year and the average"></canvas></div>
+    <p id="season-chart-note" class="footnote" hidden></p>
+
+    <h3>Hourly rain</h3>
     <div class="controls">
-      <div class="toggle" role="group" aria-label="Time range">
+      <div class="toggle" role="group" aria-label="Time range for hourly rain" data-chart="hourly">
         <button type="button" data-hours="24" aria-pressed="false">24 hours</button>
         <button type="button" data-hours="168" aria-pressed="true">7 days</button>
         <button type="button" data-hours="720" aria-pressed="false">30 days</button>
       </div>
     </div>
-
-    <h2>Season total</h2>
-    <p class="sub">Running total for the rain season, in inches. Times are PST, as reported by the district.</p>
-    <div class="chart-box"><canvas id="totals-chart" aria-label="Line chart of season totals for each gauge"></canvas></div>
-
-    <h2 id="hourly">Hourly rain</h2>
-    <div class="controls">
-      <label for="gauge-select">Gauge:</label>
-      <select id="gauge-select"></select>
-    </div>
     <p class="sub">Rain in each hour, in inches. Times are PST, as reported by the district.</p>
     <div class="chart-box"><canvas id="hourly-chart" aria-label="Bar chart of hourly rain for the selected gauge"></canvas></div>
   </section>
 
+  <section class="card">
+    <h2>Recent rain, all gauges</h2>
+    <p class="sub">Rain in inches. Periods end at the latest hour in the data.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Gauge</th><th>Last 24 hours</th><th>Last 7 days</th></tr></thead>
+        <tbody id="recent-table"></tbody>
+      </table>
+    </div>
+
+    <h3>Season total by gauge</h3>
+    <div class="controls">
+      <div class="toggle" role="group" aria-label="Time range for season totals" data-chart="totals">
+        <button type="button" data-hours="24" aria-pressed="false">24 hours</button>
+        <button type="button" data-hours="168" aria-pressed="true">7 days</button>
+        <button type="button" data-hours="720" aria-pressed="false">30 days</button>
+      </div>
+    </div>
+    <p class="sub">Rain since Oct 1, in inches. Times are PST, as reported by the district.</p>
+    <div class="chart-box"><canvas id="totals-chart" aria-label="Line chart of season totals for each gauge"></canvas></div>
+  </section>
+
+  <section class="card definitions">
+    <h2>Definitions</h2>
+    <dl>
+      <dt>Water year</dt>
+      <dd>The rain season, from Oct 1 to Sep 30. For example, 2026-27 runs from Oct 1, 2026 to Sep 30, 2027.</dd>
+      <dt>Season to date</dt>
+      <dd>Rain since Oct 1 of the current water year.</dd>
+      <dt>Normal to date</dt>
+      <dd>The average rain from Oct 1 through the same calendar date, across past water years with complete data
+        (at least 95% of days). The current water year is never included. Each gauge shows how many years its average uses.</dd>
+      <dt>Same date last year</dt>
+      <dd>Rain in the previous water year from Oct 1 through the same calendar date.</dd>
+      <dt>% of average season</dt>
+      <dd>Season to date as a share of the average total for a whole water year.</dd>
+      <dt>Limited history</dt>
+      <dd>Shown instead of an average when a gauge has fewer than 5 complete water years.</dd>
+      <dt>Times</dt>
+      <dd>PST (Pacific Standard Time) all year, as reported by the district.</dd>
+    </dl>
+  </section>
+
   <footer>
+    <p>
     Data: Santa Clara Valley Water ALERT system (<a href="https://alert.valleywater.org/">alert.valleywater.org</a>).
     Readings are preliminary and unreviewed, may contain errors or gaps, and may be revised by the district.
+    Gauge outages can appear as zero rainfall.
     This is an independent personal project and is not affiliated with or endorsed by Santa Clara Valley Water.
     Data is provided as is, with no guarantee of accuracy, completeness or timeliness, and the author is not
     responsible for any decisions made from it.
-    Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.
+    Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>,
+    map tiles © <a href="https://carto.com/attributions">CARTO</a>.
+    </p>
   </footer>
 </div>
 
@@ -254,16 +341,14 @@
 
 const HOUR_MS = 3600000;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-// Rain in the last 24 hours -> marker color and size (inches; lower bound of each class)
-const RAIN_CLASSES = [
-  { min: 0,    label: "None",          color: "--r0", radius: 7 },
-  { min: 0.01, label: "Under 0.10 in", color: "--r1", radius: 9 },
-  { min: 0.10, label: "0.10 to 0.49 in", color: "--r2", radius: 11 },
-  { min: 0.50, label: "0.50 to 0.99 in", color: "--r3", radius: 13 },
-  { min: 1.00, label: "1 in or more",  color: "--r4", radius: 15 },
-];
+const MIN_YEARS = 5;          // fewer complete years than this: "limited history"
+const EARLY_SEASON_IN = 0.5;  // below this normal-to-date, percentages swing widely
 
-const state = { gauges: [], latest: null, hours: 168, selected: null, charts: {} };
+const state = {
+  gauges: [], latest: null, stats: null, selected: null,
+  hours: { hourly: 168, totals: 168 },
+  charts: {}, history: {}, windows: {},
+};
 
 // ---------- helpers ----------
 
@@ -280,11 +365,18 @@ function showError(message) {
   box.hidden = false;
 }
 
+function el(tag, text, className) {
+  const e = document.createElement(tag);
+  if (text != null) e.textContent = text;
+  if (className) e.className = className;
+  return e;
+}
+
 // Times in the files are "YYYY-MM-DD HH:MM" in PST. We turn them into a plain hour
 // number (treated as UTC internally) so the browser's own time zone never shifts them.
 function toHour(text) {
-  const m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(text || "");
-  return m ? Date.UTC(+m[1], m[2] - 1, +m[3], +m[4]) / HOUR_MS : null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})(?: (\d{2}):(\d{2}))?/.exec(text || "");
+  return m ? Date.UTC(+m[1], m[2] - 1, +m[3], +(m[4] || 0)) / HOUR_MS : null;
 }
 
 function hourDate(h) { return new Date(h * HOUR_MS); }
@@ -292,8 +384,7 @@ function hourDate(h) { return new Date(h * HOUR_MS); }
 function fmtHour(h) {
   const d = hourDate(h);
   const hr = d.getUTCHours();
-  const ampm = hr < 12 ? "AM" : "PM";
-  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${hr % 12 || 12} ${ampm}`;
+  return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}, ${hr % 12 || 12} ${hr < 12 ? "AM" : "PM"}`;
 }
 
 function fmtDay(h) {
@@ -301,7 +392,22 @@ function fmtDay(h) {
   return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`;
 }
 
+function fmtDate(iso) {  // "2013-10-01" -> "Oct 1, 2013"
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${MONTHS[m - 1]} ${d}, ${y}`;
+}
+
 function fmtIn(v) { return v == null ? "–" : v.toFixed(2); }
+function fmtPct(v) { return v == null ? "–" : `${Math.round(v)}%`; }
+function diffWords(v) {  // "1.26 in less this year"
+  const r = Math.round(v * 100) / 100;
+  return r === 0 ? "same as this year" : `${Math.abs(r).toFixed(2)} in ${r > 0 ? "more" : "less"} this year`;
+}
+function fmtDiff(v) {
+  if (v == null) return "–";
+  const r = Math.round(v * 100) / 100;
+  return r === 0 ? "0.00" : (r > 0 ? "+" : "−") + Math.abs(r).toFixed(2);
+}
 
 function num(text) {
   if (text == null) return null;
@@ -341,6 +447,14 @@ async function fetchText(url) {
   return res.text();
 }
 
+// Water year (named by the year it ends in) and "MM-DD" of an hour number.
+function waterYear(h) { const d = hourDate(h); return d.getUTCMonth() >= 9 ? d.getUTCFullYear() + 1 : d.getUTCFullYear(); }
+function monthDay(h) {
+  const d = hourDate(h);
+  return `${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+function wyStartHour(wy) { return Date.UTC(wy - 1, 9, 1) / HOUR_MS; }
+
 // ---------- data ----------
 
 async function loadData() {
@@ -356,6 +470,7 @@ async function loadData() {
   const gauges = list.filter(g => (g.id || "").trim()).map((g, i) => ({
     id: g.id.trim(),
     name: (g.name || g.id).trim(),
+    label: (g.label || g.name || g.id).trim(),
     lat: num(g.lat),
     lon: num(g.lon),
     color: `--s${(i % 8) + 1}`,
@@ -365,7 +480,11 @@ async function loadData() {
     ok: false,
   }));
 
-  const results = await Promise.allSettled(gauges.map(g => fetchText(`data/${g.id}.csv`)));
+  const [results, statsResult] = await Promise.all([
+    Promise.allSettled(gauges.map(g => fetchText(`data/${g.id}.csv`))),
+    fetchText("data/stats.json").then(JSON.parse).then(v => ({ ok: true, v }), () => ({ ok: false })),
+  ]);
+
   const failed = [];
   results.forEach((r, i) => {
     const g = gauges[i];
@@ -383,12 +502,32 @@ async function loadData() {
   if (failed.length) {
     showError(`Sorry, data for ${failed.join(", ")} couldn't be loaded right now. The other gauges are shown below.`);
   }
+  if (statsResult.ok && statsResult.v && statsResult.v.gauges && Array.isArray(statsResult.v.days)) {
+    state.stats = statsResult.v;
+  } else {
+    showError("Sorry, the season statistics (averages and last year) couldn't be loaded right now. Rain totals are still shown.");
+  }
 
   state.gauges = gauges;
   const lasts = gauges.filter(g => g.ok).map(g => g.last);
   state.latest = lasts.length ? Math.max(...lasts) : null;
   state.selected = (gauges.find(g => g.ok) || gauges[0] || {}).id;
   return true;
+}
+
+// Daily history for one gauge, loaded when first needed: Map of day (hour number at midnight) -> inches or null.
+function loadHistory(g) {
+  if (!state.history[g.id]) {
+    state.history[g.id] = fetchText(`data/history/${g.id}_daily.csv`).then(text => {
+      const days = new Map();
+      for (const row of parseCSV(text)) {
+        const h = toHour(row.date);
+        if (h != null) days.set(h, num(row.rain_in));
+      }
+      return days;
+    }).catch(() => null);
+  }
+  return state.history[g.id];
 }
 
 // Sum of rain in the `hours` hours ending at the latest hour. `missing` counts hours with no value.
@@ -402,245 +541,271 @@ function rainOver(g, hours) {
   return { sum: any ? Math.round(sum * 100) / 100 : null, missing };
 }
 
-// Latest season total that isn't blank.
+// Latest season total (rain since Oct 1) that isn't blank, in the current water year.
 function seasonTotal(g) {
   if (!g.ok) return { value: null, hour: null };
-  for (let h = g.last; h >= g.first; h--) {
+  const wy = waterYear(g.last);
+  for (let h = g.last; h >= g.first && waterYear(h) === wy; h--) {
     const r = g.byHour.get(h);
     if (r && r.total != null) return { value: r.total, hour: h };
   }
   return { value: null, hour: null };
 }
 
-// Rain per calendar day (PST) for the last 7 days, ending with the latest day.
-function dailyRain(g) {
-  const lastDay = Math.floor(state.latest / 24);
-  const days = [];
-  for (let d = lastDay - 6; d <= lastDay; d++) {
-    let sum = 0, any = false;
-    for (let h = d * 24; h < d * 24 + 24; h++) {
-      const r = g.byHour.get(h);
-      if (r && r.rain != null) { sum += r.rain; any = true; }
-    }
-    days.push({ label: fmtDay(d * 24), value: any ? Math.round(sum * 100) / 100 : null });
+function gaugeStats(g) {
+  return state.stats ? state.stats.gauges[g.id] || null : null;
+}
+
+function isLimited(st) {
+  return !st || st.limited_history || !st.average || (st.years_used || 0) < MIN_YEARS;
+}
+
+// The five season-progress numbers for one gauge.
+function seasonProgress(g) {
+  const out = { season: null, normal: null, pctNormal: null, lastYear: null, diff: null, pctSeason: null,
+                limited: isLimited(gaugeStats(g)), early: false, noStats: !state.stats, day: null };
+  if (!g.ok) return out;
+  const s = seasonTotal(g);
+  out.season = s.value;
+  out.day = g.last;
+  const st = gaugeStats(g);
+  out.limited = isLimited(st);
+  if (!st || !state.stats) return out;
+  const i = state.stats.days.indexOf(monthDay(g.last));
+  if (i < 0) return out;
+  if (st.last_year && st.last_year[i] != null) {
+    out.lastYear = st.last_year[i];
+    if (out.season != null) out.diff = out.season - out.lastYear;
   }
-  return days;
+  if (!out.limited) {
+    out.normal = st.average[i];
+    if (out.season != null && out.normal > 0) out.pctNormal = out.season / out.normal * 100;
+    if (out.season != null && st.average_season_total > 0) out.pctSeason = out.season / st.average_season_total * 100;
+    out.early = out.normal != null && out.normal < EARLY_SEASON_IN;
+  }
+  return out;
 }
 
-function rainClass(v) {
-  let cls = RAIN_CLASSES[0];
-  for (const c of RAIN_CLASSES) if (v != null && v >= c.min) cls = c;
-  return cls;
+// "Average based on 11 water years: 2013-14 to 2025-26 ..., not counting 2014-15 and 2018-19."
+function yearsSummary(st) {
+  if (!st) return { short: "–", long: "No statistics are available for this gauge." };
+  const n = st.years_used || 0;
+  if (isLimited(st)) {
+    return { short: "limited history",
+             long: `Limited history: only ${n} complete water year${n === 1 ? "" : "s"} of data, so no average is shown.` };
+  }
+  const used = st.water_years_used || [];
+  const first = used[0], last = used[used.length - 1];
+  const inside = (st.excluded_years || []).map(e => e.water_year).filter(y => y > first && y < last);
+  let long = `Average based on ${n} water years: ${first} to ${last}`;
+  if (st.date_range) long += ` (${fmtDate(st.date_range.from)} to ${fmtDate(st.date_range.to)})`;
+  if (inside.length) long += `, not counting ${inside.join(" and ")}`;
+  return { short: `${n} years`, long: long + "." };
 }
 
-// ---------- header and table ----------
+// ---------- header and tables ----------
 
 function renderHeader() {
   document.getElementById("updated").textContent = state.latest == null
     ? "no data available"
     : `${fmtHour(state.latest)} hour (PST, as reported by the district)`;
+  if (state.latest != null) {
+    const text = `Rain in inches since Oct 1, through ${fmtDay(state.latest)}.`;
+    document.getElementById("season-sub").textContent = text;
+  }
 }
 
-function renderSummary() {
-  const body = document.getElementById("summary");
+function cell(text, className) {
+  const td = el("td", text, className);
+  return td;
+}
+
+function renderSeasonTable() {
+  const body = document.getElementById("season-table");
   body.textContent = "";
-  let anyMissing = false;
+  let anyEarly = false;
   for (const g of state.gauges) {
-    const d1 = rainOver(g, 24), d7 = rainOver(g, 168), season = seasonTotal(g);
+    const p = seasonProgress(g);
+    const st = gaugeStats(g);
+    const years = yearsSummary(st);
+    const tr = document.createElement("tr");
+    tr.appendChild(cell(g.name));
+    tr.appendChild(cell(fmtIn(p.season)));
+    if (p.limited && state.stats) {
+      tr.appendChild(cell("limited history", "limited"));
+      tr.appendChild(cell("–", "limited"));
+    } else {
+      tr.appendChild(cell(fmtIn(p.normal)));
+      tr.appendChild(cell(fmtPct(p.pctNormal)));
+    }
+    tr.appendChild(cell(fmtIn(p.lastYear)));
+    tr.appendChild(cell(fmtDiff(p.diff)));
+    tr.appendChild(p.limited && state.stats ? cell("–", "limited") : cell(fmtPct(p.pctSeason)));
+    const yc = cell(years.short, p.limited && state.stats ? "limited" : "");
+    yc.title = years.long;
+    tr.appendChild(yc);
+    body.appendChild(tr);
+    if (p.early) anyEarly = true;
+  }
+  document.getElementById("season-table-note").hidden = !anyEarly;
+}
+
+function renderRecentTable() {
+  const body = document.getElementById("recent-table");
+  body.textContent = "";
+  for (const g of state.gauges) {
     const tr = document.createElement("tr");
     const name = document.createElement("td");
-    const dot = document.createElement("span");
-    dot.className = "dot";
+    const dot = el("span", null, "dot");
     dot.style.background = css(g.color);
     name.append(dot, g.name);
     tr.appendChild(name);
-    for (const r of [d1, d7]) {
-      const td = document.createElement("td");
-      td.textContent = fmtIn(r.sum) + (r.sum != null && r.missing ? "*" : "");
-      if (r.sum != null && r.missing) anyMissing = true;
-      tr.appendChild(td);
-    }
-    const td = document.createElement("td");
-    td.textContent = fmtIn(season.value);
-    tr.appendChild(td);
+    tr.appendChild(cell(fmtIn(rainOver(g, 24).sum)));
+    tr.appendChild(cell(fmtIn(rainOver(g, 168).sum)));
     body.appendChild(tr);
   }
-  document.getElementById("summary-note").hidden = !anyMissing;
 }
 
-// ---------- map ----------
+// ---------- selected gauge: season progress ----------
 
-function renderMap() {
-  const el = document.getElementById("map");
-  if (typeof L === "undefined") {
-    el.innerHTML = '<p class="map-message">Sorry, the map couldn\'t be loaded. The table and charts below still work.</p>';
+function tile(label, value, extra, limited) {
+  const t = el("div", null, "tile");
+  t.appendChild(el("div", label, "label"));
+  t.appendChild(el("div", value, limited ? "value limited" : "value"));
+  if (extra) t.appendChild(el("div", extra, "extra"));
+  return t;
+}
+
+function renderProgress() {
+  const g = state.gauges.find(x => x.id === state.selected);
+  const box = document.getElementById("progress");
+  const yearsBox = document.getElementById("years");
+  box.textContent = "";
+  yearsBox.textContent = "";
+  if (!g || !g.ok) {
+    box.appendChild(el("p", "Sorry, data for this gauge couldn't be loaded right now.", "message"));
+    document.getElementById("progress-note").hidden = true;
     return;
   }
-  const map = L.map(el, { scrollWheelZoom: false });
-  const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 18,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
-  }).addTo(map);
-  tiles.on("tileerror", () => { document.getElementById("map-note").hidden = false; });
+  const p = seasonProgress(g);
+  const st = gaugeStats(g);
+  const lim = p.limited && !!state.stats;
+  document.getElementById("progress-sub").textContent =
+    `${g.name}. Rain in inches since Oct 1, through ${fmtDay(g.last)}.`;
+  const tiles = el("div", null, "tiles");
+  tiles.appendChild(tile("Season to date", fmtIn(p.season), "since Oct 1"));
+  tiles.appendChild(lim ? tile("Normal to date", "limited history", null, true)
+                        : tile("Normal to date", fmtIn(p.normal), "average for this date"));
+  tiles.appendChild(lim ? tile("% of normal to date", "limited history", null, true)
+                        : tile("% of normal to date", fmtPct(p.pctNormal)));
+  tiles.appendChild(tile("Same date last year", fmtIn(p.lastYear),
+                         p.diff == null ? null : diffWords(p.diff)));
+  tiles.appendChild(lim ? tile("% of average season", "limited history", null, true)
+                        : tile("% of average season", fmtPct(p.pctSeason),
+                               st && st.average_season_total != null ? `average season ${fmtIn(st.average_season_total)} in` : null));
+  box.appendChild(tiles);
+  document.getElementById("progress-note").hidden = !p.early;
 
-  const placed = state.gauges.filter(g => g.lat != null && g.lon != null);
-  for (const g of placed) {
-    const r24 = rainOver(g, 24).sum;
-    const cls = rainClass(g.ok ? r24 : null);
-    const marker = L.circleMarker([g.lat, g.lon], {
-      radius: cls.radius,
-      color: css("--ring"),
-      weight: 2,
-      fillColor: css(g.ok ? cls.color : "--r0"),
-      fillOpacity: g.ok ? 1 : 0.35,
-    }).addTo(map);
-    marker.bindTooltip(g.name);
-    marker.bindPopup(() => popupContent(g), { minWidth: 230, maxWidth: 260 });
-    marker.on("popupopen", e => drawMiniChart(g, e.popup));
-    marker.on("popupclose", () => {
-      if (state.charts.mini) { state.charts.mini.destroy(); state.charts.mini = null; }
-    });
+  if (!state.stats) {
+    yearsBox.textContent = "Averages and last year's numbers are not available right now.";
+    return;
   }
-  if (placed.length) {
-    map.fitBounds(L.latLngBounds(placed.map(g => [g.lat, g.lon])), { padding: [24, 24] });
-  } else {
-    map.setView([37.37, -122.08], 11);
+  const years = yearsSummary(st);
+  yearsBox.appendChild(el("div", years.long));
+  if (st && st.excluded_years && st.excluded_years.length) {
+    const details = document.createElement("details");
+    details.appendChild(el("summary", "Years not used"));
+    const ul = document.createElement("ul");
+    for (const e of st.excluded_years) ul.appendChild(el("li", `${e.water_year}: ${e.reason}`));
+    details.appendChild(ul);
+    yearsBox.appendChild(details);
   }
-
-  const legend = document.getElementById("legend");
-  const title = document.createElement("b");
-  title.textContent = "Rain, last 24 hours:";
-  legend.appendChild(title);
-  for (const c of RAIN_CLASSES) {
-    const item = document.createElement("span");
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    dot.style.background = css(c.color);
-    dot.style.width = dot.style.height = `${c.radius + 3}px`;
-    item.append(dot, c.label);
-    legend.appendChild(item);
-  }
-  state.map = map;
 }
 
-function popupContent(g) {
-  const div = document.createElement("div");
-  div.className = "pop";
-  const h = document.createElement("h3");
-  h.textContent = g.name;
-  div.appendChild(h);
-  if (!g.ok) {
-    const p = document.createElement("p");
-    p.className = "note";
-    p.textContent = "Data for this gauge couldn't be loaded.";
-    div.appendChild(p);
-    return div;
+// ---------- selected gauge: cumulative chart ----------
+
+async function renderSeasonChart() {
+  const g = state.gauges.find(x => x.id === state.selected);
+  const note = document.getElementById("season-chart-note");
+  note.hidden = true;
+  if (typeof Chart === "undefined" || !g || !g.ok || !state.stats) {
+    if (state.charts.season) { state.charts.season.destroy(); state.charts.season = null; }
+    note.textContent = !state.stats ? "The season chart needs the statistics file, which couldn't be loaded."
+                                    : "Sorry, this chart couldn't be drawn.";
+    note.hidden = false;
+    return;
   }
-  const d1 = rainOver(g, 24), d7 = rainOver(g, 168), season = seasonTotal(g);
-  const dl = document.createElement("dl");
-  for (const [label, value] of [
-    ["Last 24 hours", fmtIn(d1.sum) + " in"],
-    ["Last 7 days", fmtIn(d7.sum) + " in"],
-    ["Season total", fmtIn(season.value) + " in"],
-  ]) {
-    const dt = document.createElement("dt"); dt.textContent = label;
-    const dd = document.createElement("dd"); dd.textContent = value;
-    dl.append(dt, dd);
+  const days = state.stats.days;
+  const st = gaugeStats(g);
+  const wy = waterYear(g.last);
+
+  // This year: running total from the daily history, or from the hourly file if that fails.
+  const history = await loadHistory(g);
+  if (g.id !== state.selected) return;  // the selection changed while loading
+  const thisYear = new Array(days.length).fill(null);
+  const todayIndex = days.indexOf(monthDay(g.last));
+  let running = 0;
+  for (let h = wyStartHour(wy); h <= g.last - (g.last % 24); h += 24) {
+    const i = days.indexOf(monthDay(h));
+    let dayRain = null;
+    if (history) {
+      dayRain = history.get(h) ?? null;
+    } else {
+      for (let k = 0; k < 24; k++) {
+        const r = g.byHour.get(h + k);
+        if (r && r.rain != null) dayRain = (dayRain || 0) + r.rain;
+      }
+    }
+    running += dayRain || 0;
+    if (i >= 0) thisYear[i] = Math.round(running * 100) / 100;
   }
-  div.appendChild(dl);
-  if (g.last < state.latest) {
-    const p = document.createElement("p");
-    p.className = "note";
-    p.textContent = `Last reading: ${fmtHour(g.last)} PST`;
-    div.appendChild(p);
+  // Years without Feb 29: carry Feb 28's total so the line doesn't break.
+  const feb28 = days.indexOf("02-28"), feb29 = days.indexOf("02-29");
+  if (feb29 >= 0 && thisYear[feb29] == null && thisYear[feb28] != null && thisYear[feb29 + 1] != null) thisYear[feb29] = thisYear[feb28];
+  if (todayIndex >= 0) {
+    const s = seasonTotal(g).value;
+    if (s != null) thisYear[todayIndex] = s;  // match the "season to date" number exactly
   }
-  const t = document.createElement("div");
-  t.className = "mini-title";
-  t.textContent = "Rain per day, last 7 days (in)";
-  const box = document.createElement("div");
-  box.className = "mini";
-  box.appendChild(document.createElement("canvas"));
-  const link = document.createElement("a");
-  link.href = "#hourly";
-  link.textContent = "View full details";
-  link.addEventListener("click", e => {
-    e.preventDefault();
-    selectGauge(g.id);
-    if (state.map) state.map.closePopup();
-    document.getElementById("hourly").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-  div.append(t, box, link);
-  return div;
-}
 
-function drawMiniChart(g, popup) {
-  if (typeof Chart === "undefined" || !g.ok) return;
-  const canvas = popup.getElement().querySelector(".mini canvas");
-  if (!canvas) return;
-  if (state.charts.mini) state.charts.mini.destroy();
-  const days = dailyRain(g);
-  state.charts.mini = new Chart(canvas, {
-    type: "bar",
-    data: {
-      labels: days.map(d => d.label),
-      datasets: [{
-        data: days.map(d => d.value),
-        backgroundColor: css("--accent"),
-        borderRadius: 4,
-        borderSkipped: "bottom",
-        maxBarThickness: 18,
-      }],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      animation: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: c => c.raw == null ? "No data" : `${c.raw.toFixed(2)} in` } },
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { color: css("--text-2"), font: { size: 10 }, maxRotation: 0, autoSkip: true } },
-        y: { beginAtZero: true, suggestedMax: 0.1, grid: { color: css("--grid") }, border: { display: false },
-             ticks: { color: css("--text-2"), font: { size: 10 }, maxTicksLimit: 4 } },
-      },
-    },
-  });
-}
+  const limited = isLimited(st);
+  const datasets = [];
+  if (!limited) {
+    datasets.push({ label: "Range (driest to wettest)", data: st.min, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0,
+                    borderColor: "transparent", backgroundColor: css("--range"), fill: false, order: 4, isRangeLow: true });
+    datasets.push({ label: "Range (driest to wettest year)", data: st.max, borderWidth: 0, pointRadius: 0, pointHoverRadius: 0,
+                    borderColor: "transparent", backgroundColor: css("--range"), fill: "-1", order: 4, pointStyle: "rect" });
+    datasets.push({ label: `Average, dashed (${st.years_used} years)`, data: st.average, borderColor: css("--average"),
+                    backgroundColor: css("--average"), borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 3, order: 2, pointStyle: "line" });
+  }
+  if (st && st.last_year) {
+    datasets.push({ label: `Last year (${state.stats.last_water_year})`, data: st.last_year, borderColor: css("--last-year"),
+                    backgroundColor: css("--last-year"), borderWidth: 2, pointRadius: 0, pointHoverRadius: 3, order: 3, pointStyle: "line" });
+  }
+  datasets.push({ label: `This year (${state.stats.current_water_year})`, data: thisYear, borderColor: css("--this-year"),
+                  backgroundColor: css("--this-year"), borderWidth: 3, pointRadius: 0, pointHoverRadius: 4, spanGaps: false, order: 1, pointStyle: "line" });
 
-// ---------- charts ----------
-
-function windowHours() {
-  const hours = [];
-  for (let h = state.latest - state.hours + 1; h <= state.latest; h++) hours.push(h);
-  return hours;
-}
-
-// Which hours get an x-axis label: every 3 hours for 24 hours, otherwise at midnight
-// every day (7 days) or every 5 days (30 days). Phones get half as many.
-function axisLabel(h) {
   const narrow = window.innerWidth < 600;
-  if (state.hours <= 24) {
-    const step = narrow ? 6 : 3, hr = h % 24;
-    if (hr % step) return null;
-    return hr === 0 ? fmtDay(h) : fmtHour(h).split(", ")[1];
-  }
-  const everyDays = (state.hours <= 168 ? 1 : 5) * (narrow ? 2 : 1);
-  const day = Math.floor(h / 24);
-  return h % 24 === 0 && day % everyDays === 0 ? fmtDay(h) : null;
-}
-
-function commonOptions(yTitle) {
-  return {
+  const options = {
     responsive: true,
     maintainAspectRatio: false,
     animation: false,
     interaction: { mode: "index", intersect: false },
     plugins: {
-      legend: { labels: { color: css("--text"), usePointStyle: true, pointStyle: "circle", boxWidth: 8, boxHeight: 8 } },
+      legend: {
+        position: "bottom",
+        labels: { color: css("--text"), usePointStyle: true, boxWidth: 24,
+                  filter: (item, data) => !data.datasets[item.datasetIndex].isRangeLow },
+      },
       tooltip: {
+        filter: item => !item.dataset.isRangeLow && !(item.dataset.fill === "-1"),
         callbacks: {
-          title: items => items.length ? `${fmtHour(state.windowHours[items[0].dataIndex])} PST` : "",
+          title: items => items.length ? fmtSlot(days[items[0].dataIndex]) : "",
+          label: c => `${c.dataset.label}: ${c.raw == null ? "–" : c.raw.toFixed(2) + " in"}`,
+          afterBody: items => {
+            if (limited || !items.length) return "";
+            const i = items[0].dataIndex;
+            return `Range: ${st.min[i].toFixed(2)} to ${st.max[i].toFixed(2)} in`;
+          },
         },
       },
     },
@@ -648,10 +813,12 @@ function commonOptions(yTitle) {
       x: {
         grid: { display: false },
         ticks: {
-          color: css("--text-2"),
-          maxRotation: 0,
-          autoSkip: false,
-          callback: function (value, index) { return axisLabel(state.windowHours[index]); },
+          color: css("--text-2"), maxRotation: 0, autoSkip: false,
+          callback: (v, i) => {
+            const [m, d] = days[i].split("-").map(Number);
+            if (d !== 1) return null;
+            return narrow && m % 2 === 0 ? null : MONTHS[m - 1];
+          },
         },
       },
       y: {
@@ -659,54 +826,219 @@ function commonOptions(yTitle) {
         grid: { color: css("--grid") },
         border: { display: false },
         ticks: { color: css("--text-2"), maxTicksLimit: 6 },
-        title: { display: true, text: yTitle, color: css("--text-2") },
+        title: { display: true, text: "inches", color: css("--text-2") },
+      },
+    },
+  };
+  if (state.charts.season) state.charts.season.destroy();
+  state.charts.season = new Chart(document.getElementById("season-chart"), { type: "line", data: { labels: days, datasets }, options });
+  if (limited) {
+    note.textContent = "Limited history: this gauge doesn't have enough complete years for an average, so only this year and last year are shown.";
+    note.hidden = false;
+  } else if (!history) {
+    note.textContent = "The daily history couldn't be loaded, so this year's line comes from the hourly data.";
+    note.hidden = false;
+  }
+}
+
+function fmtSlot(md) {
+  const [m, d] = md.split("-").map(Number);
+  return `${MONTHS[m - 1]} ${d}`;
+}
+
+// ---------- map ----------
+
+function renderMap() {
+  const el_ = document.getElementById("map");
+  if (typeof L === "undefined") {
+    el_.innerHTML = '<p class="message" style="padding:24px">Sorry, the map couldn\'t be loaded. The tables and charts below still work.</p>';
+    return;
+  }
+  const map = L.map(el_, { scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.5 });
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+    subdomains: "abcd",
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  }).addTo(map);
+
+  const placed = state.gauges.filter(g => g.lat != null && g.lon != null);
+  state.markers = placed.map(g => {
+    const marker = L.circleMarker([g.lat, g.lon], {
+      radius: 7, color: "#ffffff", weight: 2, fillColor: "#1d1d1b", fillOpacity: 1,
+    }).addTo(map);
+    marker.bindPopup(() => popupContent(g), { minWidth: 200, maxWidth: 240 });
+    marker.gauge = g;
+    return marker;
+  });
+  if (placed.length) {
+    // Leave room around the dots for their name labels.
+    map.fitBounds(L.latLngBounds(placed.map(g => [g.lat, g.lon])), { paddingTopLeft: [30, 30], paddingBottomRight: [30, 40] });
+  } else {
+    map.setView([37.37, -122.08], 11);
+  }
+  state.map = map;
+  placeLabels();
+  map.on("zoomend", placeLabels);
+  window.addEventListener("resize", () => { map.invalidateSize(); placeLabels(); });
+}
+
+// Put each name label on the side of its dot where it overlaps least with other dots and labels.
+function placeLabels() {
+  const map = state.map;
+  if (!map || !state.markers) return;
+  const size = map.getSize();
+  const ctx = document.createElement("canvas").getContext("2d");
+  ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const dots = state.markers.map(m => {
+    const p = map.latLngToContainerPoint(m.getLatLng());
+    return { x1: p.x - 14, y1: p.y - 14, x2: p.x + 14, y2: p.y + 14 };  // the dot plus a margin, so labels don't sit next to other dots
+  });
+  const boxes = [];
+  const overlap = (a, b) => Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
+  // Place labels for the most crowded dots first.
+  const order = state.markers.map((m, i) => i).sort((a, b) => {
+    const near = i => dots.filter(d => Math.abs(d.x1 - dots[i].x1) < 160 && Math.abs(d.y1 - dots[i].y1) < 40).length;
+    return near(b) - near(a);
+  });
+  for (const i of order) {
+    const m = state.markers[i];
+    const p = map.latLngToContainerPoint(m.getLatLng());
+    // Label size, and where Leaflet will put it (it adds 6 px beyond the offset).
+    const w = ctx.measureText(m.gauge.label).width + 12, h = 20, gap = 16;
+    const options = [
+      { dir: "right", box: { x1: p.x + gap, y1: p.y - h / 2, x2: p.x + gap + w, y2: p.y + h / 2 }, offset: [10, 0] },
+      { dir: "left", box: { x1: p.x - gap - w, y1: p.y - h / 2, x2: p.x - gap, y2: p.y + h / 2 }, offset: [-10, 0] },
+      { dir: "top", box: { x1: p.x - w / 2, y1: p.y - gap - h, x2: p.x + w / 2, y2: p.y - gap }, offset: [0, -10] },
+      { dir: "bottom", box: { x1: p.x - w / 2, y1: p.y + gap, x2: p.x + w / 2, y2: p.y + gap + h }, offset: [0, 10] },
+    ];
+    let best = null;
+    for (const o of options) {
+      const b = o.box;
+      let cost = 0;
+      for (const other of boxes) cost += overlap(b, other);
+      dots.forEach((d, j) => { if (j !== i) cost += overlap(b, d) * 2; });
+      // Going outside the map counts against a side.
+      cost += Math.max(0, -b.x1) * h + Math.max(0, b.x2 - size.x) * h + Math.max(0, -b.y1) * w + Math.max(0, b.y2 - size.y) * w;
+      if (!best || cost < best.cost) best = { ...o, cost };
+    }
+    boxes.push(best.box);
+    m.unbindTooltip();
+    m.bindTooltip(m.gauge.label, { permanent: true, direction: best.dir, offset: best.offset, className: "gauge-label" });
+  }
+}
+
+function popupContent(g) {
+  const div = el("div", null, "pop");
+  div.appendChild(el("h4", g.name));
+  if (!g.ok) {
+    div.appendChild(el("p", "Data for this gauge couldn't be loaded."));
+    return div;
+  }
+  const p = seasonProgress(g);
+  const dl = document.createElement("dl");
+  const rows = [["Season to date", `${fmtIn(p.season)} in`]];
+  if (state.stats) rows.push(["% of normal", p.limited ? "limited history" : fmtPct(p.pctNormal)]);
+  for (const [label, value] of rows) dl.append(el("dt", label), el("dd", value));
+  div.appendChild(dl);
+  const link = el("a", "View details");
+  link.href = "#gauge";
+  link.addEventListener("click", e => {
+    e.preventDefault();
+    selectGauge(g.id);
+    if (state.map) state.map.closePopup();
+    document.getElementById("gauge").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  div.appendChild(link);
+  return div;
+}
+
+// ---------- hourly and season-total charts ----------
+
+function windowHours(hours) {
+  const out = [];
+  for (let h = state.latest - hours + 1; h <= state.latest; h++) out.push(h);
+  return out;
+}
+
+// Which hours get an x-axis label: every 3 hours for 24 hours, otherwise at midnight
+// every day (7 days) or every 5 days (30 days). Phones get half as many.
+function axisLabel(h, hours) {
+  const narrow = window.innerWidth < 600;
+  if (hours <= 24) {
+    const step = narrow ? 6 : 3, hr = h % 24;
+    if (hr % step) return null;
+    return hr === 0 ? fmtDay(h) : fmtHour(h).split(", ")[1];
+  }
+  const everyDays = (hours <= 168 ? 1 : 5) * (narrow ? 2 : 1);
+  const day = Math.floor(h / 24);
+  return h % 24 === 0 && day % everyDays === 0 ? fmtDay(h) : null;
+}
+
+function timeOptions(hoursList, hours) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { labels: { color: css("--text"), usePointStyle: true, pointStyle: "circle", boxWidth: 8, boxHeight: 8 } },
+      tooltip: { callbacks: { title: items => items.length ? `${fmtHour(hoursList[items[0].dataIndex])} PST` : "" } },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: css("--text-2"), maxRotation: 0, autoSkip: false, callback: (v, i) => axisLabel(hoursList[i], hours) },
+      },
+      y: {
+        beginAtZero: true,
+        grid: { color: css("--grid") },
+        border: { display: false },
+        ticks: { color: css("--text-2"), maxTicksLimit: 6 },
+        title: { display: true, text: "inches", color: css("--text-2") },
       },
     },
   };
 }
 
 function renderTotalsChart() {
-  const hours = state.windowHours;
+  const hours = state.hours.totals;
+  const list = windowHours(hours);
   const datasets = state.gauges.filter(g => g.ok).map(g => ({
     label: g.name,
-    data: hours.map(h => { const r = g.byHour.get(h); return r && r.total != null ? r.total : null; }),
+    data: list.map(h => { const r = g.byHour.get(h); return r && r.total != null ? r.total : null; }),
     borderColor: css(g.color),
     backgroundColor: css(g.color),
     borderWidth: 2,
     pointRadius: 0,
     pointHoverRadius: 4,
     spanGaps: false,
-    tension: 0,
   }));
-  const options = commonOptions("inches");
+  const options = timeOptions(list, hours);
   options.plugins.legend.position = "bottom";
   options.plugins.tooltip.callbacks.label = c => `${c.dataset.label}: ${c.raw == null ? "no data" : c.raw.toFixed(2) + " in"}`;
   if (state.charts.totals) state.charts.totals.destroy();
-  state.charts.totals = new Chart(document.getElementById("totals-chart"), {
-    type: "line",
-    data: { labels: hours.map(String), datasets },
-    options,
-  });
+  state.charts.totals = new Chart(document.getElementById("totals-chart"), { type: "line", data: { labels: list.map(String), datasets }, options });
 }
 
 function renderHourlyChart() {
   const g = state.gauges.find(x => x.id === state.selected);
-  const hours = state.windowHours;
-  const data = hours.map(h => { const r = g && g.byHour.get(h); return r && r.rain != null ? r.rain : null; });
-  const options = commonOptions("inches");
+  const hours = state.hours.hourly;
+  const list = windowHours(hours);
+  const data = list.map(h => { const r = g && g.byHour.get(h); return r && r.rain != null ? r.rain : null; });
+  const options = timeOptions(list, hours);
   options.plugins.legend.display = false;
   options.scales.y.suggestedMax = 0.1;
-  options.plugins.tooltip.callbacks.label = c => c.raw == null ? "No reading" : `${c.raw.toFixed(2)} in`;
+  options.plugins.tooltip.callbacks.label = c => c.raw == null ? "No data" : `${c.raw.toFixed(2)} in`;
   if (state.charts.hourly) state.charts.hourly.destroy();
   state.charts.hourly = new Chart(document.getElementById("hourly-chart"), {
     type: "bar",
     data: {
-      labels: hours.map(String),
+      labels: list.map(String),
       datasets: [{
         label: g ? g.name : "",
         data,
         backgroundColor: css("--accent"),
-        borderRadius: state.hours <= 168 ? 4 : 1,
+        borderRadius: hours <= 168 ? 4 : 1,
         borderSkipped: "bottom",
         maxBarThickness: 24,
       }],
@@ -715,24 +1047,28 @@ function renderHourlyChart() {
   });
 }
 
-function renderCharts() {
-  if (state.latest == null) return;
-  if (typeof Chart === "undefined") {
-    for (const id of ["totals-chart", "hourly-chart"]) {
-      document.getElementById(id).parentElement.innerHTML =
-        '<p class="map-message">Sorry, the chart couldn\'t be loaded. Please try again later.</p>';
-    }
-    return;
+function chartsAvailable() {
+  if (typeof Chart !== "undefined") return true;
+  for (const id of ["season-chart", "hourly-chart", "totals-chart"]) {
+    const box = document.getElementById(id);
+    if (box) box.parentElement.innerHTML = '<p class="message">Sorry, the chart couldn\'t be loaded. Please try again later.</p>';
   }
-  state.windowHours = windowHours();
-  renderTotalsChart();
-  renderHourlyChart();
+  return false;
+}
+
+// ---------- controls ----------
+
+function renderSelected() {
+  renderProgress();
+  if (typeof Chart === "undefined") return;
+  renderSeasonChart().catch(e => { console.error(e); });
+  if (state.latest != null) renderHourlyChart();
 }
 
 function selectGauge(id) {
   state.selected = id;
   document.getElementById("gauge-select").value = id;
-  if (typeof Chart !== "undefined" && state.latest != null) renderHourlyChart();
+  renderSelected();
 }
 
 function setupControls() {
@@ -747,14 +1083,16 @@ function setupControls() {
   select.value = state.selected;
   select.addEventListener("change", () => selectGauge(select.value));
 
-  for (const btn of document.querySelectorAll(".toggle button")) {
-    btn.addEventListener("click", () => {
-      state.hours = Number(btn.dataset.hours);
-      for (const b of document.querySelectorAll(".toggle button")) {
-        b.setAttribute("aria-pressed", String(b === btn));
-      }
-      if (typeof Chart !== "undefined" && state.latest != null) renderCharts();
-    });
+  for (const group of document.querySelectorAll(".toggle")) {
+    const chart = group.dataset.chart;
+    for (const btn of group.querySelectorAll("button")) {
+      btn.addEventListener("click", () => {
+        state.hours[chart] = Number(btn.dataset.hours);
+        for (const b of group.querySelectorAll("button")) b.setAttribute("aria-pressed", String(b === btn));
+        if (typeof Chart === "undefined" || state.latest == null) return;
+        if (chart === "hourly") renderHourlyChart(); else renderTotalsChart();
+      });
+    }
   }
 }
 
@@ -764,16 +1102,22 @@ async function main() {
     return;
   }
   renderHeader();
-  renderSummary();
+  renderSeasonTable();
+  renderRecentTable();
   setupControls();
   try { renderMap(); } catch (e) {
     console.error(e);
     document.getElementById("map").innerHTML =
-      '<p class="map-message">Sorry, the map couldn\'t be loaded. The table and charts below still work.</p>';
+      '<p class="message" style="padding:24px">Sorry, the map couldn\'t be loaded. The tables and charts below still work.</p>';
   }
-  try { renderCharts(); } catch (e) {
+  renderProgress();
+  if (!chartsAvailable()) return;
+  try {
+    await renderSeasonChart();
+    if (state.latest != null) { renderHourlyChart(); renderTotalsChart(); }
+  } catch (e) {
     console.error(e);
-    showError("Sorry, the charts couldn't be drawn. The map and table above still work.");
+    showError("Sorry, some charts couldn't be drawn. The map and tables still work.");
   }
 }
 

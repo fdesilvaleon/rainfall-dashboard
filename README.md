@@ -6,10 +6,12 @@ Santa Clara Valley Water District's ALERT rain gauges, using the district's
 
 **Dashboard:** https://fdesilvaleon.github.io/rainfall-dashboard/
 
-The dashboard (`index.html`) shows a map of the gauges, a summary table, and
-charts of season totals and hourly rain. It is hosted free on GitHub Pages and
-reads the data files in this repository, so it updates whenever new data is
-collected.
+The dashboard (`index.html`) shows a map of the gauge locations, how each
+gauge's season compares with normal and with last year (a table for all gauges,
+and numbers and a water-year chart for a chosen gauge), hourly rain, and recent
+totals. It is hosted free on GitHub Pages and reads the data files in this
+repository (`data/<id>.csv`, `data/history/` and `data/stats.json`), so it
+updates whenever new data is collected.
 
 > **Not for safety decisions.** For emergencies, flood warnings and safety
 > information, check the Santa Clara Valley Water website
@@ -18,7 +20,8 @@ collected.
 ## How it works
 
 - **`gauges.csv`** is the list of rain gauges. To add a gauge, add a line with
-  its ID number, name, latitude and longitude. IDs and coordinates are in the
+  its ID number, name, latitude, longitude and (optionally) a short `label`
+  for the map. IDs and coordinates are in the
   district's sensor list at https://alertdata.valleywater.org/Sensor/all (look
   up the gauge's `gageId` and copy its `latitude` and `longitude`). Then run
   `python backfill.py <id>` once to download its history.
