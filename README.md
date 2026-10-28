@@ -9,7 +9,8 @@ Santa Clara Valley Water District's ALERT rain gauges, using the district's
 The dashboard (`index.html`) shows a map of the gauge locations, how each
 gauge's season compares with normal and with last year (a table for all gauges,
 and numbers and a water-year chart for a chosen gauge), hourly rain, and recent
-totals. It is hosted free on GitHub Pages and reads the data files in this
+totals. The map uses standard OpenStreetMap tiles (tile.openstreetmap.org),
+shown in gray at low contrast. It is hosted free on GitHub Pages and reads the data files in this
 repository (`data/<id>.csv`, `data/history/` and `data/stats.json`), so it
 updates whenever new data is collected.
 
@@ -123,5 +124,5 @@ preliminary and unreviewed, may contain errors or gaps, and may be revised by
 the district. This is an independent personal project and is not affiliated
 with or endorsed by Santa Clara Valley Water. Data is provided as is, with no
 guarantee of accuracy, completeness or timeliness, and the author is not
-responsible for any decisions made from it. Map data ©
+responsible for any decisions made from it. Map data and map tiles ©
 [OpenStreetMap contributors](https://www.openstreetmap.org/copyright).

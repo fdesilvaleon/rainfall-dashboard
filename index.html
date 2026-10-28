@@ -120,7 +120,13 @@
     white-space: nowrap;
   }
   .leaflet-tooltip.gauge-label::before { display: none; }
-  .leaflet-interactive:focus { outline: none; }
+  /* OpenStreetMap tiles, made light and quiet. If they fail, the map's plain light background shows. */
+  .quiet-tiles { filter: grayscale(1) contrast(0.42) brightness(1.4); }
+  .quiet-tiles .leaflet-tile { mix-blend-mode: normal; }  /* avoids light seams between tiles at in-between zoom levels */
+  .gauge-icon { background: none; border: 0; display: flex; align-items: flex-end; justify-content: center; }
+  .gauge-icon svg { display: block; margin-bottom: 4px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
+  .gauge-icon:focus { outline: none; }
+  .gauge-icon:focus-visible svg { outline: 2px solid #2a78d6; outline-offset: 2px; border-radius: 2px; }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--text); }
   .leaflet-popup-content { margin: 12px 14px; font-size: 0.9rem; line-height: 1.4; }
   .pop h4 { margin: 0 0 6px; font-size: 1rem; }
@@ -198,7 +204,7 @@
 
   @media (max-width: 600px) {
     h1 { font-size: 1.35rem; }
-    #map { height: 300px; }
+    #map { height: 400px; }  /* tall enough to spread the gauges out for their labels */
     .chart-box { height: 260px; }
     section.card { padding: 12px; }
     th, td { padding: 8px 5px; font-size: 0.88rem; }
@@ -326,8 +332,7 @@
     This is an independent personal project and is not affiliated with or endorsed by Santa Clara Valley Water.
     Data is provided as is, with no guarantee of accuracy, completeness or timeliness, and the author is not
     responsible for any decisions made from it.
-    Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>,
-    map tiles © <a href="https://carto.com/attributions">CARTO</a>.
+    Map data and map tiles © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.
     </p>
   </footer>
 </div>
@@ -848,6 +853,28 @@ function fmtSlot(md) {
 
 // ---------- map ----------
 
+// A simple rain gauge: a funnel on top of a narrow collecting cylinder, with measurement marks.
+// Drawn 20 x 28 px; its base is the bottom of the drawing, which sits on the gauge's location.
+const GAUGE_SVG =
+  '<svg width="20" height="28" viewBox="0 0 20 28" aria-hidden="true">' +
+  '<path d="M1.5 1.5 H18.5 L14.5 8.5 V25 Q14.5 26.5 13 26.5 H7 Q5.5 26.5 5.5 25 V8.5 Z" ' +
+  'fill="#1d1d1b" stroke="#ffffff" stroke-width="1.3" stroke-linejoin="round"/>' +
+  '<path d="M5.5 8.5 H14.5 M5.8 13 H9.5 M5.8 17 H11 M5.8 21 H9.5" stroke="#ffffff" stroke-width="1.2"/>' +
+  '</svg>';
+// The tap area is a 44 x 44 px box around the icon; the icon's base is 4 px above the box's bottom edge.
+const GAUGE_ICON_BOX = 44, GAUGE_BASE = 40, GAUGE_W = 20, GAUGE_H = 28;
+
+function gaugeIcon() {
+  return L.divIcon({
+    className: "gauge-icon",
+    html: GAUGE_SVG,
+    iconSize: [GAUGE_ICON_BOX, GAUGE_ICON_BOX],
+    iconAnchor: [GAUGE_ICON_BOX / 2, GAUGE_BASE],  // base of the gauge on the exact location
+    tooltipAnchor: [0, -GAUGE_H / 2],               // labels line up with the middle of the icon
+    popupAnchor: [0, -GAUGE_H - 2],                 // cards open above the icon
+  });
+}
+
 function renderMap() {
   const el_ = document.getElementById("map");
   if (typeof L === "undefined") {
@@ -855,24 +882,23 @@ function renderMap() {
     return;
   }
   const map = L.map(el_, { scrollWheelZoom: false, zoomSnap: 0.25, zoomDelta: 0.5 });
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-    subdomains: "abcd",
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  }).addTo(map);
+    className: "quiet-tiles",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+  }).on("tileerror", e => { e.tile.style.visibility = "hidden"; })  // no broken-image boxes; the light background shows
+    .addTo(map);
 
   const placed = state.gauges.filter(g => g.lat != null && g.lon != null);
   state.markers = placed.map(g => {
-    const marker = L.circleMarker([g.lat, g.lon], {
-      radius: 7, color: "#ffffff", weight: 2, fillColor: "#1d1d1b", fillOpacity: 1,
-    }).addTo(map);
+    const marker = L.marker([g.lat, g.lon], { icon: gaugeIcon(), title: g.name, alt: g.name, riseOnHover: true }).addTo(map);
     marker.bindPopup(() => popupContent(g), { minWidth: 200, maxWidth: 240 });
     marker.gauge = g;
     return marker;
   });
   if (placed.length) {
-    // Leave room around the dots for their name labels.
-    map.fitBounds(L.latLngBounds(placed.map(g => [g.lat, g.lon])), { paddingTopLeft: [30, 30], paddingBottomRight: [30, 40] });
+    // Leave room around the icons for their name labels (icons stand above their location).
+    map.fitBounds(L.latLngBounds(placed.map(g => [g.lat, g.lon])), { paddingTopLeft: [30, 50], paddingBottomRight: [30, 30] });
   } else {
     map.setView([37.37, -122.08], 11);
   }
@@ -882,49 +908,59 @@ function renderMap() {
   window.addEventListener("resize", () => { map.invalidateSize(); placeLabels(); });
 }
 
-// Put each name label on the side of its dot where it overlaps least with other dots and labels.
+// Put each name label on the side of its icon where it overlaps least with other icons and labels.
 function placeLabels() {
   const map = state.map;
   if (!map || !state.markers) return;
   const size = map.getSize();
   const ctx = document.createElement("canvas").getContext("2d");
   ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-  const dots = state.markers.map(m => {
-    const p = map.latLngToContainerPoint(m.getLatLng());
-    return { x1: p.x - 14, y1: p.y - 14, x2: p.x + 14, y2: p.y + 14 };  // the dot plus a margin, so labels don't sit next to other dots
-  });
-  const boxes = [];
+  const points = state.markers.map(m => map.latLngToContainerPoint(m.getLatLng()));
+  // Each icon stands on its point: GAUGE_W wide, GAUGE_H tall. A margin keeps labels from sitting right next to other icons.
+  const margin = 6;
+  const icons = points.map(p => ({ x1: p.x - GAUGE_W / 2 - margin, y1: p.y - GAUGE_H - margin, x2: p.x + GAUGE_W / 2 + margin, y2: p.y + margin }));
   const overlap = (a, b) => Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
-  // Place labels for the most crowded dots first.
-  const order = state.markers.map((m, i) => i).sort((a, b) => {
-    const near = i => dots.filter(d => Math.abs(d.x1 - dots[i].x1) < 160 && Math.abs(d.y1 - dots[i].y1) < 40).length;
-    return near(b) - near(a);
-  });
-  for (const i of order) {
-    const m = state.markers[i];
-    const p = map.latLngToContainerPoint(m.getLatLng());
+
+  // The four places a label can go, each with its own cost: covering other icons, leaving the map,
+  // and a small preference for right, then left, below and above.
+  const choices = points.map((p, i) => {
+    const cy = p.y - GAUGE_H / 2;  // middle of the icon, where labels are anchored
     // Label size, and where Leaflet will put it (it adds 6 px beyond the offset).
-    const w = ctx.measureText(m.gauge.label).width + 12, h = 20, gap = 16;
-    const options = [
-      { dir: "right", box: { x1: p.x + gap, y1: p.y - h / 2, x2: p.x + gap + w, y2: p.y + h / 2 }, offset: [10, 0] },
-      { dir: "left", box: { x1: p.x - gap - w, y1: p.y - h / 2, x2: p.x - gap, y2: p.y + h / 2 }, offset: [-10, 0] },
-      { dir: "top", box: { x1: p.x - w / 2, y1: p.y - gap - h, x2: p.x + w / 2, y2: p.y - gap }, offset: [0, -10] },
-      { dir: "bottom", box: { x1: p.x - w / 2, y1: p.y + gap, x2: p.x + w / 2, y2: p.y + gap + h }, offset: [0, 10] },
-    ];
-    let best = null;
-    for (const o of options) {
+    const w = ctx.measureText(state.markers[i].gauge.label).width + 12, h = 20;
+    return [
+      { dir: "right", offset: [8, 0], box: { x1: p.x + 14, y1: cy - h / 2, x2: p.x + 14 + w, y2: cy + h / 2 }, pref: 0 },
+      { dir: "left", offset: [-8, 0], box: { x1: p.x - 14 - w, y1: cy - h / 2, x2: p.x - 14, y2: cy + h / 2 }, pref: 1 },
+      { dir: "bottom", offset: [0, 16], box: { x1: p.x - w / 2, y1: p.y + 8, x2: p.x + w / 2, y2: p.y + 8 + h }, pref: 2 },
+      { dir: "top", offset: [0, -12], box: { x1: p.x - w / 2, y1: p.y - 32 - h, x2: p.x + w / 2, y2: p.y - 32 }, pref: 3 },
+    ].map(o => {
       const b = o.box;
-      let cost = 0;
-      for (const other of boxes) cost += overlap(b, other);
-      dots.forEach((d, j) => { if (j !== i) cost += overlap(b, d) * 2; });
-      // Going outside the map counts against a side.
-      cost += Math.max(0, -b.x1) * h + Math.max(0, b.x2 - size.x) * h + Math.max(0, -b.y1) * w + Math.max(0, b.y2 - size.y) * w;
-      if (!best || cost < best.cost) best = { ...o, cost };
-    }
-    boxes.push(best.box);
+      let cost = o.pref;
+      icons.forEach((d, j) => { if (j !== i) cost += overlap(b, d) * 3; });
+      cost += (Math.max(0, -b.x1) + Math.max(0, b.x2 - size.x)) * h * 3 + (Math.max(0, -b.y1) + Math.max(0, b.y2 - size.y)) * w * 3;
+      return { ...o, cost };
+    });
+  });
+
+  // Try the combinations and keep the one with the lowest total cost (labels covering each other count too).
+  // Searching is quick for a handful of gauges; cheaper partial results are explored first and worse ones cut short.
+  const n = points.length, pick = new Array(n), best = { cost: Infinity, pick: null };
+  let steps = 0;
+  (function search(i, cost) {
+    if (cost >= best.cost || ++steps > 200000) return;
+    if (i === n) { best.cost = cost; best.pick = pick.slice(); return; }
+    const options = choices[i].map((o, k) => {
+      let c = o.cost;
+      for (let j = 0; j < i; j++) c += overlap(o.box, choices[j][pick[j]].box) * 2;
+      return { k, c };
+    }).sort((a, b) => a.c - b.c);
+    for (const { k, c } of options) { pick[i] = k; search(i + 1, cost + c); }
+  })(0, 0);
+
+  state.markers.forEach((m, i) => {
+    const o = choices[i][best.pick ? best.pick[i] : 0];
     m.unbindTooltip();
-    m.bindTooltip(m.gauge.label, { permanent: true, direction: best.dir, offset: best.offset, className: "gauge-label" });
-  }
+    m.bindTooltip(m.gauge.label, { permanent: true, direction: o.dir, offset: o.offset, className: "gauge-label" });
+  });
 }
 
 function popupContent(g) {
