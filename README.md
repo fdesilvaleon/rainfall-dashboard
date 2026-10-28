@@ -59,6 +59,9 @@ The district asked that requests stay at about one every few minutes at most.
 example "2025-26". All times and days are **Pacific Standard Time (PST) all year**,
 as the district reports them.
 
+**Note:** the API reports 0 both for dry periods and for times when a gauge
+isn't reporting, so a gauge outage can look like a dry spell.
+
 The API gives the rain in each 15-minute period. A value stamped 02:00 is the
 rain from 01:45 to 02:00, so it counts in the 01:00 hour (and a value stamped
 midnight counts in the day before).
@@ -96,8 +99,13 @@ A water year is **complete** if at least 95% of its days have data. Only the
 last 15 full water years are considered, and the current (unfinished) water
 year is never included.
 
-**Missing data:** the API reports 0 both when it didn't rain and when a gauge
-wasn't reporting. So a gauge outage looks like a dry spell. A dry spell is
+**Years excluded by hand** (listed in `MANUAL_EXCLUSIONS` in `rainfall.py`; the
+daily data is kept unchanged):
+
+- Maryknoll Fields (6144): 2014-15 and 2018-19. They pass the 95% rule, but
+  outages during big storms (Dec 2014, Feb 2019) left them several inches too low.
+
+**Missing data:** because outages look like dry spells (see the note above), a dry spell is
 treated as a **suspected outage** (and its days count as missing) if the other
 gauges clearly got rain at the same time: a median of at least 0.5 in on one
 day, or at least 1 in over the spell.

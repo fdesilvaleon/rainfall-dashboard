@@ -39,6 +39,17 @@ LIMITED_YEARS = 5         # fewer complete years than this is flagged as "limite
 OUTAGE_DAY_IN = 0.5       # see suspected_outages()
 OUTAGE_RUN_IN = 1.0
 
+# Water years left out of the statistics by hand, per gauge: {gauge id: {water year: reason}}.
+# The daily data itself is kept unchanged. Water years are named by the year they end in (2015 = 2014-15).
+MANUAL_EXCLUSIONS = {
+    # Maryknoll Fields: outages during big storms (Dec 2014, Feb 2019) left these years several
+    # inches too low, although they pass the 95% rule.
+    "6144": {
+        2015: "excluded by hand: outage during the Dec 2014 storms left the total several inches too low",
+        2019: "excluded by hand: outage during the Feb 2019 storms left the total several inches too low",
+    },
+}
+
 HOUR_FORMAT = "%Y-%m-%d %H:%M"
 
 
@@ -305,6 +316,10 @@ def compute_stats(gauges, daily_by_gauge, today):
             days = list(days_between(wy_start(y), wy_end(y)))
             have = sum(1 for d in days if daily.get(d) is not None and d not in outage_days)
             coverage_of[y] = have / len(days)
+            manual = MANUAL_EXCLUSIONS.get(gid, {}).get(y)
+            if manual:
+                excluded.append({"water_year": wy_label(y), "coverage_percent": round(coverage_of[y] * 100, 1), "reason": manual})
+                continue
             if coverage_of[y] >= COMPLETE_SHARE:
                 complete.append(y)
                 continue
@@ -330,7 +345,7 @@ def compute_stats(gauges, daily_by_gauge, today):
             "excluded_years": excluded,
             "suspected_outages": [{"from": a.isoformat(), "to": b.isoformat(), "days": (b - a).days + 1} for a, b in outages],
             "average_season_total": round(statistics.mean(totals), 2) if totals else None,
-            "last_year_complete": coverage_of.get(last_year, 0) >= COMPLETE_SHARE,
+            "last_year_complete": last_year in complete,
             "average": stat(statistics.mean),
             "min": stat(min),
             "max": stat(max),

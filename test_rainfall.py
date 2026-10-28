@@ -240,6 +240,19 @@ class StatsTests(unittest.TestCase):
         # The current water year never counts.
         self.assertNotIn("2026-27", a["water_years_used"])
 
+    def test_years_excluded_by_hand_are_left_out(self):
+        today = date(2026, 10, 28)
+        daily = {"A": self.history(date(2018, 10, 1), today, 0.1)}
+        with mock.patch.dict(rf.MANUAL_EXCLUSIONS, {"A": {2019: "excluded by hand: test"}}, clear=True):
+            a = rf.compute_stats([{"id": "A", "name": "A"}], daily, today)["gauges"]["A"]
+        self.assertNotIn("2018-19", a["water_years_used"])
+        self.assertEqual(a["years_used"], 7)
+        self.assertIn({"water_year": "2018-19", "coverage_percent": 100.0, "reason": "excluded by hand: test"}, a["excluded_years"])
+        self.assertEqual(daily["A"][date(2019, 1, 1)], 0.1)  # the data itself is unchanged
+
+    def test_maryknoll_storm_outage_years_are_excluded(self):
+        self.assertEqual(set(rf.MANUAL_EXCLUSIONS["6144"]), {2015, 2019})
+
     def test_dry_spell_while_neighbors_got_rain_is_a_suspected_outage(self):
         days = list(rf.days_between(date(2025, 1, 1), date(2025, 1, 10)))
         wet = {d: 1.0 for d in days}
