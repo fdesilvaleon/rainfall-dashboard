@@ -34,6 +34,18 @@ jobs:
             echo "No new data."
           else
             git commit -m "Update rainfall data"
-            git pull --rebase
-            git push
+            # Push, trying up to 3 times (waiting 30 s, then 90 s). Each attempt first pulls
+            # and replays our commit on top of any newer changes so they don't block the push.
+            for wait in 0 30 90; do
+              if [ "$wait" -gt 0 ]; then
+                echo "Push failed. Trying again in $wait seconds."
+                sleep "$wait"
+              fi
+              if git pull --rebase && git push; then
+                exit 0
+              fi
+              git rebase --abort 2>/dev/null || true  # clean up if the pull stopped halfway
+            done
+            echo "Push failed after 3 attempts."
+            exit 1
           fi
