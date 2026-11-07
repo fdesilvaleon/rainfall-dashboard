@@ -121,6 +121,18 @@
     white-space: nowrap;
   }
   .leaflet-tooltip.gauge-label::before { display: none; }
+  /* The small "i" in a circle at the end of each label: a hint that the label can be tapped for details. */
+  .gauge-label .tap-cue {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-left: 4px;
+    border: 1.2px solid #1d1d1b;
+    border-radius: 50%;
+    font: italic 700 9px/9.6px Georgia, "Times New Roman", serif;
+    text-align: center;
+    vertical-align: 0;
+  }
   /* OpenStreetMap tiles, made light and quiet. If they fail, the map's plain light background shows. */
   .quiet-tiles { filter: grayscale(1) contrast(0.42) brightness(1.4); }
   .leaflet-container .quiet-tiles img.leaflet-tile { mix-blend-mode: normal; }  /* avoids light seams between tiles on high-resolution screens (overrides Leaflet's own setting) */
@@ -232,7 +244,7 @@
   <div id="error" class="error" role="alert" hidden></div>
 
   <section class="card">
-    <h2>Gauge locations</h2>
+    <h2>Rain gauge locations</h2>
     <p class="sub">Tap a gauge for its season so far.</p>
     <div id="map"></div>
   </section>
@@ -864,6 +876,7 @@ const GAUGE_SVG =
   '</svg>';
 // The tap area is a 44 x 44 px box around the icon; the icon's base is 4 px above the box's bottom edge.
 const GAUGE_ICON_BOX = 44, GAUGE_BASE = 40, GAUGE_W = 20, GAUGE_H = 28;
+const CUE_W = 16;  // the tap cue at the end of each label: 12 px circle plus a 4 px gap
 
 function gaugeIcon() {
   return L.divIcon({
@@ -1014,7 +1027,9 @@ function placeLabels() {
   const choices = points.map((p, i) => {
     const cy = p.y - GAUGE_H / 2;  // middle of the icon, where labels are anchored
     // Label size, and where Leaflet will put it (it adds 6 px beyond the offset).
-    const w = Math.max(...texts[i].map(t => ctx.measureText(t).width)) + 12, h = 17 * texts[i].length + 3;
+    // The tap cue sits at the end of the last line, so that line is CUE_W px wider.
+    const last = texts[i].length - 1;
+    const w = Math.max(...texts[i].map((t, k) => ctx.measureText(t).width + (k === last ? CUE_W : 0))) + 12, h = 17 * texts[i].length + 3;
     return [
       { dir: "right", offset: [8, 0], box: { x1: p.x + 14, y1: cy - h / 2, x2: p.x + 14 + w, y2: cy + h / 2 }, pref: 0 },
       { dir: "left", offset: [-8, 0], box: { x1: p.x - 14 - w, y1: cy - h / 2, x2: p.x - 14, y2: cy + h / 2 }, pref: 1 },
@@ -1048,8 +1063,10 @@ function placeLabels() {
   state.markers.forEach((m, i) => {
     const o = choices[i][best.pick ? best.pick[i] : 0];
     m.unbindTooltip();
-    const html = texts[i].map(t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;")).join("<br>");
-    m.bindTooltip(html, { permanent: true, direction: o.dir, offset: o.offset, className: "gauge-label" });
+    const html = texts[i].map(t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;")).join("<br>") +
+      '<span class="tap-cue" aria-hidden="true">i</span>';
+    m.bindTooltip(html, { permanent: true, interactive: true, direction: o.dir, offset: o.offset, className: "gauge-label" });
+    m.getTooltip().on("click", () => m.openPopup());  // tapping the label opens the same card as the icon
   });
   // Without overlaps the total is only the small side preferences (at most 3 per label).
   return best.cost <= 3 * n;
