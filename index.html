@@ -30,6 +30,7 @@
     --last-year: #eb6834;
     --average: #52514e;
     --range: rgba(82, 81, 78, 0.13);
+    --bar: #8a8984;  /* one neutral color for the % of normal bars */
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -52,6 +53,7 @@
       --last-year: #d95926;
       --average: #c3c2b7;
       --range: rgba(195, 194, 183, 0.16);
+      --bar: #7d7c76;
     }
   }
 
@@ -148,19 +150,8 @@
   .pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
   .pop a { font-weight: 600; }
 
-  /* tables */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  th, td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: right; }
-  th:first-child, td:first-child { text-align: left; }
-  th { font-size: 0.85rem; color: var(--text-2); font-weight: 600; vertical-align: bottom; }
-  tbody tr:last-child td { border-bottom: none; }
-  td .dot { margin-right: 8px; }
-  td.limited { color: var(--muted); font-style: italic; }
   .footnote { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
   .footnote[hidden] { display: none; }
-  .scroll-hint { display: none; }
-  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: middle; }
 
   /* season progress tiles */
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0 0; }
@@ -220,11 +211,8 @@
     #map { height: 480px; }  /* tall enough to spread the gauges out for their labels */
     .chart-box { height: 260px; }
     section.card { padding: 12px; }
-    th, td { padding: 8px 5px; font-size: 0.88rem; }
     .tiles { grid-template-columns: 1fr 1fr; }
     .tile .value { font-size: 1.25rem; }
-    th:first-child, td:first-child { position: sticky; left: 0; background: var(--surface); min-width: 112px; }
-    .scroll-hint { display: block; }
   }
 </style>
 </head>
@@ -250,19 +238,11 @@
   </section>
 
   <section class="card">
-    <h2>Season progress, all gauges</h2>
-    <p class="sub" id="season-sub">Rain in inches since Oct 1.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Gauge</th><th>Season to date</th><th>Normal to date</th><th>% of normal</th>
-          <th>Same date last year</th><th>Difference vs. last year</th><th>% of average season</th><th>Average based on</th>
-        </tr></thead>
-        <tbody id="season-table"></tbody>
-      </table>
-    </div>
-    <p class="footnote scroll-hint">Swipe the table sideways to see all columns.</p>
-    <p id="season-table-note" class="note" hidden>Early in the season these percentages swing widely because normal-to-date is small.</p>
+    <h2>% of normal by gauge</h2>
+    <p class="sub" id="pct-sub">Rain since Oct 1 as a share of the normal amount by this date. The dashed line is 100% (normal).</p>
+    <div class="chart-box" id="pct-box"><canvas id="pct-chart" aria-label="Bar chart of each gauge's rain since Oct 1 as a percentage of normal"></canvas></div>
+    <p id="pct-missing" class="footnote" hidden></p>
+    <p id="pct-note" class="note" hidden>Early in the season these percentages swing widely because normal-to-date is small.</p>
   </section>
 
   <section class="card" id="gauge">
@@ -295,16 +275,7 @@
   </section>
 
   <section class="card">
-    <h2>Recent rain, all gauges</h2>
-    <p class="sub">Rain in inches. Periods end at the latest hour in the data.</p>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Gauge</th><th>Last 24 hours</th><th>Last 7 days</th></tr></thead>
-        <tbody id="recent-table"></tbody>
-      </table>
-    </div>
-
-    <h3>Season total by gauge</h3>
+    <h2>Season total by gauge</h2>
     <div class="controls">
       <div class="toggle" role="group" aria-label="Time range for season totals" data-chart="totals">
         <button type="button" data-hours="24" aria-pressed="false">24 hours</button>
@@ -420,11 +391,6 @@ function fmtPct(v) { return v == null ? "–" : `${Math.round(v)}%`; }
 function diffWords(v) {  // "1.26 in less this year"
   const r = Math.round(v * 100) / 100;
   return r === 0 ? "same as this year" : `${Math.abs(r).toFixed(2)} in ${r > 0 ? "more" : "less"} this year`;
-}
-function fmtDiff(v) {
-  if (v == null) return "–";
-  const r = Math.round(v * 100) / 100;
-  return r === 0 ? "0.00" : (r > 0 ? "+" : "−") + Math.abs(r).toFixed(2);
 }
 
 function num(text) {
@@ -548,17 +514,6 @@ function loadHistory(g) {
   return state.history[g.id];
 }
 
-// Sum of rain in the `hours` hours ending at the latest hour. `missing` counts hours with no value.
-function rainOver(g, hours) {
-  if (!g.ok || state.latest == null) return { sum: null, missing: hours };
-  let sum = 0, missing = 0, any = false;
-  for (let h = state.latest - hours + 1; h <= state.latest; h++) {
-    const r = g.byHour.get(h);
-    if (r && r.rain != null) { sum += r.rain; any = true; } else missing++;
-  }
-  return { sum: any ? Math.round(sum * 100) / 100 : null, missing };
-}
-
 // Latest season total (rain since Oct 1) that isn't blank, in the current water year.
 function seasonTotal(g) {
   if (!g.ok) return { value: null, hour: null };
@@ -606,11 +561,10 @@ function seasonProgress(g) {
 
 // "Average based on 11 water years: 2013-14 to 2025-26 ..., not counting 2014-15 and 2018-19."
 function yearsSummary(st) {
-  if (!st) return { short: "–", long: "No statistics are available for this gauge." };
+  if (!st) return { long: "No statistics are available for this gauge." };
   const n = st.years_used || 0;
   if (isLimited(st)) {
-    return { short: "limited history",
-             long: `Limited history: only ${n} complete water year${n === 1 ? "" : "s"} of data, so no average is shown.` };
+    return { long: `Limited history: only ${n} complete water year${n === 1 ? "" : "s"} of data, so no average is shown.` };
   }
   const used = st.water_years_used || [];
   const first = used[0], last = used[used.length - 1];
@@ -618,70 +572,127 @@ function yearsSummary(st) {
   let long = `Average based on ${n} water years: ${first} to ${last}`;
   if (st.date_range) long += ` (${fmtDate(st.date_range.from)} to ${fmtDate(st.date_range.to)})`;
   if (inside.length) long += `, not counting ${inside.join(" and ")}`;
-  return { short: `${n} years`, long: long + "." };
+  return { long: long + "." };
 }
 
-// ---------- header and tables ----------
+// ---------- header ----------
 
 function renderHeader() {
   document.getElementById("updated").textContent = state.latest == null
     ? "no data available"
     : `${fmtHour(state.latest)} hour (PST, as reported by the district)`;
-  if (state.latest != null) {
-    const text = `Rain in inches since Oct 1, through ${fmtDay(state.latest)}.`;
-    document.getElementById("season-sub").textContent = text;
-  }
 }
 
-function cell(text, className) {
-  const td = el("td", text, className);
-  return td;
-}
+// ---------- % of normal by gauge ----------
 
-function renderSeasonTable() {
-  const body = document.getElementById("season-table");
-  body.textContent = "";
+// Draws the dashed 100% line and writes each bar's percentage just past its end.
+const pctChartExtras = {
+  id: "pctChartExtras",
+  afterDatasetsDraw(chart) {
+    const { ctx, chartArea, scales: { x } } = chart;
+    const font = '600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.save();
+    const x100 = x.getPixelForValue(100);
+    ctx.strokeStyle = css("--text");
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(x100, chartArea.top - 4);
+    ctx.lineTo(x100, chartArea.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = font;
+    ctx.fillStyle = css("--text");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("normal", x100, chartArea.top - 6);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    chart.getDatasetMeta(0).data.forEach((bar, i) => {
+      ctx.fillText(`${Math.round(chart.data.datasets[0].data[i])}%`, bar.x + 6, bar.y);
+    });
+    ctx.restore();
+  },
+};
+
+// One bar per gauge: rain since Oct 1 as a percentage of normal for this date.
+// Gauges without a normal (limited history, missing data) are left out and listed below the chart.
+function renderPctChart() {
+  const box = document.getElementById("pct-box");
+  const missingLine = document.getElementById("pct-missing");
+  const shown = [], left = [];
   let anyEarly = false;
   for (const g of state.gauges) {
     const p = seasonProgress(g);
-    const st = gaugeStats(g);
-    const years = yearsSummary(st);
-    const tr = document.createElement("tr");
-    tr.appendChild(cell(g.name));
-    tr.appendChild(cell(fmtIn(p.season)));
-    if (p.limited && state.stats) {
-      tr.appendChild(cell("limited history", "limited"));
-      tr.appendChild(cell("–", "limited"));
-    } else {
-      tr.appendChild(cell(fmtIn(p.normal)));
-      tr.appendChild(cell(fmtPct(p.pctNormal)));
+    if (!g.ok) left.push(`${g.label} (data couldn't be loaded)`);
+    else if (!state.stats) continue;
+    else if (p.limited) left.push(`${g.label} (limited history)`);
+    else if (p.pctNormal == null) left.push(`${g.label} (no normal for this date)`);
+    else {
+      shown.push({ label: g.label, value: p.pctNormal, season: p.season, normal: p.normal });
+      if (p.early) anyEarly = true;
     }
-    tr.appendChild(cell(fmtIn(p.lastYear)));
-    tr.appendChild(cell(fmtDiff(p.diff)));
-    tr.appendChild(p.limited && state.stats ? cell("–", "limited") : cell(fmtPct(p.pctSeason)));
-    const yc = cell(years.short, p.limited && state.stats ? "limited" : "");
-    yc.title = years.long;
-    tr.appendChild(yc);
-    body.appendChild(tr);
-    if (p.early) anyEarly = true;
   }
-  document.getElementById("season-table-note").hidden = !anyEarly;
-}
+  missingLine.textContent = !state.stats
+    ? "The statistics file couldn't be loaded, so percentages of normal aren't available right now."
+    : left.length ? `Not shown: ${left.join(", ")}.` : "";
+  missingLine.hidden = !missingLine.textContent;
+  document.getElementById("pct-note").hidden = !anyEarly;
+  if (state.charts.pct) { state.charts.pct.destroy(); state.charts.pct = null; }
+  box.hidden = !shown.length;
+  if (!shown.length) return;
 
-function renderRecentTable() {
-  const body = document.getElementById("recent-table");
-  body.textContent = "";
-  for (const g of state.gauges) {
-    const tr = document.createElement("tr");
-    const name = document.createElement("td");
-    const dot = el("span", null, "dot");
-    dot.style.background = css(g.color);
-    name.append(dot, g.name);
-    tr.appendChild(name);
-    tr.appendChild(cell(fmtIn(rainOver(g, 24).sum)));
-    tr.appendChild(cell(fmtIn(rainOver(g, 168).sum)));
-    body.appendChild(tr);
-  }
+  box.style.height = `${48 + 34 * shown.length}px`;  // about 34 px per bar, plus room for the axis
+  const top = Math.max(...shown.map(s => s.value));
+  // Axis marks every 25% (every 50% on narrow screens). The axis ends on a mark, past 100% and with room for the labels after each bar.
+  const step = window.innerWidth < 600 ? 50 : 25;
+  const axisMax = Math.max(100 + step, Math.ceil(top * 1.25 / step) * step);
+  state.charts.pct = new Chart(document.getElementById("pct-chart"), {
+    type: "bar",
+    data: {
+      labels: shown.map(s => s.label),
+      datasets: [{
+        data: shown.map(s => s.value),
+        backgroundColor: css("--bar"),
+        borderRadius: 4,
+        borderSkipped: "start",
+        barPercentage: 0.75,
+        maxBarThickness: 22,
+      }],
+    },
+    options: {
+      indexAxis: "y",  // horizontal bars
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      layout: { padding: { top: 18, right: 8 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => {
+              const s = shown[c.dataIndex];
+              return `${Math.round(s.value)}% of normal: ${fmtIn(s.season)} in so far, normal ${fmtIn(s.normal)} in`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          min: 0,
+          max: axisMax,
+          grid: { color: css("--grid") },
+          border: { display: false },
+          ticks: { color: css("--text-2"), stepSize: step, maxRotation: 0, callback: v => `${v}%` },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { color: css("--text"), font: { size: 12 } },
+        },
+      },
+    },
+    plugins: [pctChartExtras],
+  });
 }
 
 // ---------- selected gauge: season progress ----------
@@ -892,7 +903,7 @@ function gaugeIcon() {
 function renderMap() {
   const el_ = document.getElementById("map");
   if (typeof L === "undefined") {
-    el_.innerHTML = '<p class="message" style="padding:24px">Sorry, the map couldn\'t be loaded. The tables and charts below still work.</p>';
+    el_.innerHTML = '<p class="message" style="padding:24px">Sorry, the map couldn\'t be loaded. The charts below still work.</p>';
     return;
   }
   // Whole zoom levels only: tiles then show at their natural size, without seams between them.
@@ -1194,7 +1205,7 @@ function renderHourlyChart() {
 
 function chartsAvailable() {
   if (typeof Chart !== "undefined") return true;
-  for (const id of ["season-chart", "hourly-chart", "totals-chart"]) {
+  for (const id of ["pct-chart", "season-chart", "hourly-chart", "totals-chart"]) {
     const box = document.getElementById(id);
     if (box) box.parentElement.innerHTML = '<p class="message">Sorry, the chart couldn\'t be loaded. Please try again later.</p>';
   }
@@ -1247,22 +1258,21 @@ async function main() {
     return;
   }
   renderHeader();
-  renderSeasonTable();
-  renderRecentTable();
   setupControls();
   try { renderMap(); } catch (e) {
     console.error(e);
     document.getElementById("map").innerHTML =
-      '<p class="message" style="padding:24px">Sorry, the map couldn\'t be loaded. The tables and charts below still work.</p>';
+      '<p class="message" style="padding:24px">Sorry, the map couldn\'t be loaded. The charts below still work.</p>';
   }
   renderProgress();
   if (!chartsAvailable()) return;
   try {
+    renderPctChart();
     await renderSeasonChart();
     if (state.latest != null) { renderHourlyChart(); renderTotalsChart(); }
   } catch (e) {
     console.error(e);
-    showError("Sorry, some charts couldn't be drawn. The map and tables still work.");
+    showError("Sorry, some charts couldn't be drawn. The map and the other parts of the page still work.");
   }
 }
 
