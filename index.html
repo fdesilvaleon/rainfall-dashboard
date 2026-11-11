@@ -191,6 +191,7 @@
   .gauge-picker { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 4px; }
   .gauge-picker label { font-weight: 600; }
   .chart-box { position: relative; height: 320px; }
+  .chart-box.forecast-box { height: 250px; }
 
   .definitions dl { margin: 0; }
   .definitions dt { font-weight: 600; margin-top: 10px; }
@@ -210,6 +211,7 @@
     h1 { font-size: 1.35rem; }
     #map { height: 480px; }  /* tall enough to spread the gauges out for their labels */
     .chart-box { height: 260px; }
+    .chart-box.forecast-box { height: 230px; }
     section.card { padding: 12px; }
     .tiles { grid-template-columns: 1fr 1fr; }
     .tile .value { font-size: 1.25rem; }
@@ -257,6 +259,11 @@
     <p id="progress-note" class="note" hidden>Early in the season these percentages swing widely because normal-to-date is small.</p>
     <div id="years" class="years"></div>
 
+    <h3>Next 7 days: rain forecast</h3>
+    <p class="sub">Expected rain in inches (bars) and the chance of rain (under each day), from the National Weather Service.</p>
+    <div class="chart-box forecast-box" id="forecast-box"><canvas id="forecast-chart" aria-label="Bar chart of expected rain for each of the next 7 days"></canvas></div>
+    <p id="forecast-info" class="footnote" hidden></p>
+
     <h3>Rain since Oct 1, through the water year</h3>
     <p class="sub">Cumulative rain in inches, Oct 1 to Sep 30.</p>
     <div class="chart-box"><canvas id="season-chart" aria-label="Line chart of cumulative rain this water year, last year and the average"></canvas></div>
@@ -301,6 +308,9 @@
       <dd>Rain in the previous water year from Oct 1 through the same calendar date.</dd>
       <dt>% of average season</dt>
       <dd>Season to date as a share of the average total for a whole water year.</dd>
+      <dt>Rain forecast</dt>
+      <dd>The National Weather Service's expected rain for each of the next 7 days, for the 2.5 km area around the gauge,
+        with the highest chance of rain that day. Forecast days follow Pacific local time. Updated about every hour.</dd>
       <dt>Limited history</dt>
       <dd>Shown instead of an average when a gauge has fewer than 5 complete water years.</dd>
       <dt>Times</dt>
@@ -317,6 +327,7 @@
     Data is provided as is, with no guarantee of accuracy, completeness or timeliness, and the author is not
     responsible for any decisions made from it.
     Map data and map tiles © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>.
+    Forecast: National Weather Service (<a href="https://www.weather.gov/">weather.gov</a>).
     </p>
   </footer>
 </div>
@@ -334,7 +345,7 @@ const MIN_YEARS = 5;          // fewer complete years than this: "limited histor
 const EARLY_SEASON_IN = 0.5;  // below this normal-to-date, percentages swing widely
 
 const state = {
-  gauges: [], latest: null, stats: null, selected: null,
+  gauges: [], latest: null, stats: null, forecast: null, selected: null,
   hours: { hourly: 168, totals: 168 },
   charts: {}, history: {}, windows: {},
 };
@@ -464,10 +475,13 @@ async function loadData() {
     ok: false,
   }));
 
-  const [results, statsResult] = await Promise.all([
+  const [results, statsResult, forecastResult] = await Promise.all([
     Promise.allSettled(gauges.map(g => fetchText(`data/${g.id}.csv`))),
     fetchText("data/stats.json").then(JSON.parse).then(v => ({ ok: true, v }), () => ({ ok: false })),
+    fetchText("data/forecast.json").then(JSON.parse).then(v => ({ ok: true, v }), () => ({ ok: false })),
   ]);
+  // The forecast is optional: if it's missing, only its own chart says so.
+  if (forecastResult.ok && forecastResult.v && forecastResult.v.gauges) state.forecast = forecastResult.v;
 
   const failed = [];
   results.forEach((r, i) => {
@@ -1205,11 +1219,130 @@ function renderHourlyChart() {
 
 function chartsAvailable() {
   if (typeof Chart !== "undefined") return true;
-  for (const id of ["pct-chart", "season-chart", "hourly-chart", "totals-chart"]) {
+  for (const id of ["pct-chart", "forecast-chart", "season-chart", "hourly-chart", "totals-chart"]) {
     const box = document.getElementById(id);
     if (box) box.parentElement.innerHTML = '<p class="message">Sorry, the chart couldn\'t be loaded. Please try again later.</p>';
   }
   return false;
+}
+
+// ---------- selected gauge: 7-day forecast ----------
+
+const FORECAST_STALE_HOURS = 6;
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+function pacificToday() {  // "YYYY-MM-DD" in Pacific local time, where the forecast days are counted
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
+}
+
+function fmtPacific(iso) {  // "Nov 11, 1:36 PM" in Pacific local time
+  return new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", month: "short", day: "numeric",
+    hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+}
+
+// Writes each day's expected rain above its bar, or "–" where the amount is unknown.
+const forecastLabels = {
+  id: "forecastLabels",
+  afterDatasetsDraw(chart) {
+    const { ctx, scales: { y } } = chart;
+    ctx.save();
+    ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = css("--text");
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    chart.getDatasetMeta(0).data.forEach((bar, i) => {
+      const v = chart.data.datasets[0].data[i];
+      ctx.fillText(v == null ? "–" : v.toFixed(2), bar.x, (v == null ? y.getPixelForValue(0) : bar.y) - 4);
+    });
+    ctx.restore();
+  },
+};
+
+function renderForecastChart() {
+  const g = state.gauges.find(x => x.id === state.selected);
+  const box = document.getElementById("forecast-box");
+  const info = document.getElementById("forecast-info");
+  const f = state.forecast;
+  const entry = f && g ? f.gauges[g.id] : null;
+  const today = pacificToday();
+  const days = entry ? (entry.days || []).filter(d => d.date >= today) : [];  // skip days already past
+  if (state.charts.forecast) { state.charts.forecast.destroy(); state.charts.forecast = null; }
+  if (!days.length) {
+    box.hidden = true;
+    info.textContent = "The forecast isn't available right now.";
+    info.hidden = false;
+    return;
+  }
+  box.hidden = false;
+
+  const partial = days.some(d => !d.complete);
+  const narrow = window.innerWidth < 600;  // phones: weekday only ("Fri"); the full date is in the tooltip
+  const fullNames = days.map(d => {
+    const [yy, mm, dd] = d.date.split("-").map(Number);
+    return `${WEEKDAYS[new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay()]}, ${MONTHS[mm - 1]} ${dd}`;
+  });
+  const labels = days.map((d, i) => {
+    const name = d.date === today ? "Today" : narrow ? fullNames[i].slice(0, 3) : fullNames[i].replace(/,.* /, " ");
+    return [name + (d.complete ? "" : "*"), d.chance_max_pct == null ? "–" : `${d.chance_max_pct}%`];
+  });
+  const values = days.map(d => d.rain_in);
+
+  // The line under the chart: the week's total, when NWS updated the forecast, and any problems.
+  const known = values.filter(v => v != null);
+  const total = known.reduce((a, b) => a + b, 0);
+  const parts = [`Next ${days.length} days: ${known.length < values.length ? "at least " : ""}${total.toFixed(2)} in expected.`];
+  if (entry.nws_updated) parts.push(`Forecast updated ${fmtPacific(entry.nws_updated)}.`);
+  if (partial) parts.push("* Only part of this day is covered by the forecast (for today, it may include hours that have already passed).");
+  if (entry.fetched_at && Date.now() - Date.parse(entry.fetched_at) > FORECAST_STALE_HOURS * HOUR_MS) {
+    parts.push(`This forecast is more than ${FORECAST_STALE_HOURS} hours old; the latest update didn't arrive.`);
+  }
+  info.textContent = parts.join(" ");
+  info.hidden = false;
+
+  state.charts.forecast = new Chart(document.getElementById("forecast-chart"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: css("--accent"),
+        borderRadius: 4,
+        borderSkipped: "bottom",
+        maxBarThickness: 36,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      layout: { padding: { top: 18 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => items.length ? fullNames[items[0].dataIndex] : "",
+            label: c => {
+              const d = days[c.dataIndex];
+              const rain = d.rain_in == null ? "Expected rain unknown" : `${d.rain_in.toFixed(2)} in expected`;
+              return `${rain}, ${d.chance_max_pct == null ? "chance unknown" : `${d.chance_max_pct}% chance of rain`}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: css("--text-2"), maxRotation: 0, autoSkip: false, font: { size: narrow ? 11 : 12 } } },
+        y: {
+          beginAtZero: true,
+          suggestedMax: 0.25,  // small amounts don't look like big storms
+          grid: { color: css("--grid") },
+          border: { display: false },
+          ticks: { color: css("--text-2"), maxTicksLimit: 5 },
+          title: { display: true, text: "inches", color: css("--text-2") },
+        },
+      },
+    },
+    plugins: [forecastLabels],
+  });
 }
 
 // ---------- controls ----------
@@ -1217,6 +1350,7 @@ function chartsAvailable() {
 function renderSelected() {
   renderProgress();
   if (typeof Chart === "undefined") return;
+  try { renderForecastChart(); } catch (e) { console.error(e); }
   renderSeasonChart().catch(e => { console.error(e); });
   if (state.latest != null) renderHourlyChart();
 }
@@ -1268,6 +1402,7 @@ async function main() {
   if (!chartsAvailable()) return;
   try {
     renderPctChart();
+    try { renderForecastChart(); } catch (e) { console.error(e); }
     await renderSeasonChart();
     if (state.latest != null) { renderHourlyChart(); renderTotalsChart(); }
   } catch (e) {
