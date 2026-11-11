@@ -195,6 +195,7 @@ class CollectTests(TempDataDir):
         with mock.patch.object(rf, "load_gauges", return_value=gauges), \
              mock.patch.object(rf, "fetch_rain", fake_fetch), \
              mock.patch.object(rf, "now_pst", return_value=datetime(2026, 10, 28, 14, 20)), \
+             mock.patch.object(collect.forecast, "update"), \
              mock.patch("sys.stderr", io.StringIO()), mock.patch("sys.stdout", io.StringIO()):
             collect.main()
         self.assertFalse((rf.DATA_DIR / "1.csv").exists())

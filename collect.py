@@ -5,6 +5,7 @@ rain and updates:
   data/<id>.csv                hourly rain for the current and previous water year
   data/history/<id>_daily.csv  daily rain history
   data/stats.json              statistics for the website (recomputed every run)
+  data/forecast.json           the National Weather Service's 7-day rain forecast (see forecast.py)
 
 Polite access: one request per gauge, at least 5 seconds apart. On an error or
 timeout a request is tried again at most twice (after 30 s, then 2 min). If it
@@ -13,6 +14,7 @@ still fails, that gauge is skipped until the next run, which catches up.
 import sys
 from datetime import datetime, time as dtime, timedelta
 
+import forecast
 import rainfall as rf
 
 GAP_SECONDS = 5
@@ -73,6 +75,11 @@ def main():
         rf.write_stats(gauges, now.date())
     except Exception as e:
         print(f"Statistics not updated ({e})", file=sys.stderr)
+    # The forecast comes last, after the rainfall data is saved, and can never fail the run.
+    try:
+        forecast.update(gauges)
+    except Exception as e:
+        print(f"Forecast not updated ({e})", file=sys.stderr)
     # Only report failure if every gauge failed, so one bad gauge doesn't stop the others being saved.
     if failures == len(gauges):
         sys.exit(1)

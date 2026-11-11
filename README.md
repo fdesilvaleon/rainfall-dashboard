@@ -116,6 +116,52 @@ day, or at least 1 in over the spell.
 
 The data is preliminary and may contain errors, as noted by the district.
 
+### `data/forecast.json`: 7-day rain forecast (National Weather Service)
+
+Updated every hour by `forecast.py`, after the rainfall data is saved, from the
+free NWS API (https://api.weather.gov). For each gauge it uses the raw forecast
+for the 2.5 km grid cell the gauge is in (`/gridpoints/{office}/{x},{y}`):
+expected rain (`quantitativePrecipitation`, given in millimetres) and chance of
+rain (`probabilityOfPrecipitation`). Each gauge's grid cell is looked up once
+(`/points/{lat},{lon}`) and saved in `data/forecast_grids.json`.
+
+For each gauge:
+
+- `grid`: the NWS grid cell used (forecast office, x, y).
+- `nws_updated`: when NWS last updated that forecast (UTC, as NWS gives it).
+- `fetched_at`: when we fetched it (Pacific time).
+- `days`: the next 7 calendar days in **Pacific local time** (with daylight
+  saving time, unlike the gauge data, which is PST all year), starting today:
+  - `rain_in`: expected rain that day, in inches: the sum of the forecast
+    periods counted for that day. A period that crosses midnight (NWS uses
+    6-hour periods, one of which runs about 10 PM to 4 AM) counts for the day
+    that holds most of its hours. Amounts are converted from millimetres but not
+    otherwise rounded or smoothed.
+  - **`rain_in` is `null` (unknown), not 0,** if NWS gave no amount for any
+    period counted for that day, or if no period was counted (beyond the end of
+    the forecast).
+  - `complete`: `false` when the forecast does not cover the whole day.
+    Today is always partial, because the forecast starts at its latest update
+    (and may include hours earlier today that have already passed).
+  - `hours_covered`: how many hours of that day the forecast covers.
+  - `chance_max_pct`: the highest chance of rain (%) among the forecast periods
+    that overlap the day. A chance of rain can come with 0.00 in expected, when
+    only a trace is likely.
+  - `periods`: the forecast periods counted for that day, as NWS gave them.
+
+Top level: `fetched_at` (the last time a new forecast was fetched) and
+`last_error` (`null`, or the time and message of the last problem).
+
+**If the forecast can't be fetched,** the previous `forecast.json` is kept, the
+problem is recorded in `last_error`, and the run carries on: the forecast never
+stops the rainfall data from being saved. The file is only rewritten when its
+contents change.
+
+**Polite access to the NWS API:** at least 5 seconds between requests, one
+request per grid cell per run, at most 2 retries (after 30 seconds, then 2
+minutes), and if a request still fails no more NWS requests are made until the
+next run. Requests use the same User-Agent as the rest of the project.
+
 ## Attribution and disclaimer
 
 Data: Santa Clara Valley Water ALERT system
