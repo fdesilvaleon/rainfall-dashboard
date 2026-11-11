@@ -191,7 +191,8 @@
   .gauge-picker { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 4px; }
   .gauge-picker label { font-weight: 600; }
   .chart-box { position: relative; height: 320px; }
-  .chart-box.forecast-box { height: 250px; }
+  .chart-box.forecast-box { height: 300px; }
+  #forecast-info p { margin: 0 0 4px; }
 
   .definitions dl { margin: 0; }
   .definitions dt { font-weight: 600; margin-top: 10px; }
@@ -211,7 +212,7 @@
     h1 { font-size: 1.35rem; }
     #map { height: 480px; }  /* tall enough to spread the gauges out for their labels */
     .chart-box { height: 260px; }
-    .chart-box.forecast-box { height: 230px; }
+    .chart-box.forecast-box { height: 290px; }
     section.card { padding: 12px; }
     .tiles { grid-template-columns: 1fr 1fr; }
     .tile .value { font-size: 1.25rem; }
@@ -259,10 +260,10 @@
     <p id="progress-note" class="note" hidden>Early in the season these percentages swing widely because normal-to-date is small.</p>
     <div id="years" class="years"></div>
 
-    <h3>Next 7 days: rain forecast</h3>
-    <p class="sub">Expected rain in inches (bars) and the chance of rain (under each day), from the National Weather Service.</p>
-    <div class="chart-box forecast-box" id="forecast-box"><canvas id="forecast-chart" aria-label="Bar chart of expected rain for each of the next 7 days"></canvas></div>
-    <p id="forecast-info" class="footnote" hidden></p>
+    <h3>Last 7 days and next 7 days</h3>
+    <p class="sub">Rain each day, in inches: measured by the gauge (solid bars) and forecast by the National Weather Service (striped bars, with the chance of rain under each day).</p>
+    <div class="chart-box forecast-box" id="forecast-box"><canvas id="forecast-chart" aria-label="Bar chart of rain measured on each of the last 7 days and forecast for each of the next 7 days"></canvas></div>
+    <div id="forecast-info" class="footnote" hidden></div>
 
     <h3>Rain since Oct 1, through the water year</h3>
     <p class="sub">Cumulative rain in inches, Oct 1 to Sep 30.</p>
@@ -308,9 +309,11 @@
       <dd>Rain in the previous water year from Oct 1 through the same calendar date.</dd>
       <dt>% of average season</dt>
       <dd>Season to date as a share of the average total for a whole water year.</dd>
-      <dt>Rain forecast</dt>
-      <dd>The National Weather Service's expected rain for each of the next 7 days, for the 2.5 km area around the gauge,
-        with the highest chance of rain that day. Forecast days follow Pacific local time. Updated about every hour.</dd>
+      <dt>Last 7 days and next 7 days</dt>
+      <dd>Solid bars: rain measured by the gauge on each of the last 7 days, added up from the hourly data, midnight to
+        midnight in PST (the district's time). Striped bars: the National Weather Service's expected rain for the 2.5 km area
+        around the gauge, for today and the next 6 days (Pacific local calendar days, updated about every hour), with the
+        highest chance of rain that day. Today shows both: rain measured so far, and the forecast for the whole day.</dd>
       <dt>Limited history</dt>
       <dd>Shown instead of an average when a gauge has fewer than 5 complete water years.</dd>
       <dt>Times</dt>
@@ -1240,20 +1243,92 @@ function fmtPacific(iso) {  // "Nov 11, 1:36 PM" in Pacific local time
     hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 }
 
-// Writes each day's expected rain above its bar, or "–" where the amount is unknown.
-const forecastLabels = {
-  id: "forecastLabels",
+function withAlpha(hex, alpha) {  // "#2a78d6" -> "rgba(42, 120, 214, alpha)"
+  const n = parseInt(hex.replace("#", ""), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
+}
+
+// A light striped fill for forecast bars, so they can't be mistaken for measured rain (works in black and white too).
+function stripes(color) {
+  const tile = document.createElement("canvas");
+  tile.width = tile.height = 8;
+  const t = tile.getContext("2d");
+  t.fillStyle = withAlpha(color, 0.15);
+  t.fillRect(0, 0, 8, 8);
+  t.strokeStyle = withAlpha(color, 0.8);
+  t.lineWidth = 1.5;
+  t.beginPath();
+  t.moveTo(-2, 10); t.lineTo(10, -2);
+  t.moveTo(-2, 2); t.lineTo(2, -2);
+  t.moveTo(6, 10); t.lineTo(10, 6);
+  t.stroke();
+  return t.createPattern(tile, "repeat");
+}
+
+// Rain measured on one day (midnight to midnight PST): the sum of that day's hourly values.
+// `hours` is how many hours had data; a day with none is unknown (null), not 0.
+function measuredDay(g, dayStart) {
+  if (!g || !g.ok) return { value: null, hours: 0 };
+  let sum = 0, hours = 0;
+  for (let k = 0; k < 24; k++) {
+    const r = g.byHour.get(dayStart + k);
+    if (r && r.rain != null) { sum += r.rain; hours++; }
+  }
+  return { value: hours ? Math.round(sum * 100) / 100 : null, hours };
+}
+
+const PAST_DAYS = 7, NEXT_DAYS = 6;  // today sits between them, so 15 slots in all
+
+// Draws the "now" divider through today's slot, the Measured / Forecast labels, and each bar's amount.
+const dailyChartExtras = {
+  id: "dailyChartExtras",
   afterDatasetsDraw(chart) {
-    const { ctx, scales: { y } } = chart;
+    const { ctx, chartArea, scales: { x, y } } = chart;
+    const narrow = chart.width < 500;
+    const font = size => `600 ${size}px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
     ctx.save();
-    ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    // Amounts above the bars ("–" where there is no data). On phones, zero amounts are left unlabeled.
+    ctx.font = font(narrow ? 9 : 11);
     ctx.fillStyle = css("--text");
     ctx.textAlign = "center";
     ctx.textBaseline = "bottom";
-    chart.getDatasetMeta(0).data.forEach((bar, i) => {
-      const v = chart.data.datasets[0].data[i];
-      ctx.fillText(v == null ? "–" : v.toFixed(2), bar.x, (v == null ? y.getPixelForValue(0) : bar.y) - 4);
+    chart.data.datasets.forEach((ds, di) => {
+      chart.getDatasetMeta(di).data.forEach((bar, i) => {
+        if (!ds.slotUsed[i]) return;
+        const v = ds.data[i];
+        if (v == null) {  // no bar to stand on: centre the dash in the day's slot (or its half, today)
+          const cx = Number.isFinite(bar.x) ? bar.x : x.getPixelForValue(i);
+          ctx.fillText("–", cx, y.getPixelForValue(0) - 3);
+          return;
+        }
+        if (narrow && v === 0) return;
+        const text = narrow ? v.toFixed(2).replace(/^0(?=\.)/, "") : v.toFixed(2);
+        if (i === PAST_DAYS) {  // today's two labels sit either side of the divider so they don't collide
+          ctx.textAlign = di === 0 ? "right" : "left";
+          ctx.fillText(text, x.getPixelForValue(i) + (di === 0 ? -2 : 2), bar.y - 3);
+          ctx.textAlign = "center";
+          return;
+        }
+        ctx.fillText(text, bar.x, bar.y - 3);
+      });
     });
+    // The divider: through the middle of today's slot, between today's measured and forecast bars.
+    const xNow = x.getPixelForValue(PAST_DAYS);
+    ctx.strokeStyle = css("--text-2");
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(xNow, chartArea.top - 16);
+    ctx.lineTo(xNow, chartArea.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = font(narrow ? 10 : 12);
+    ctx.fillStyle = css("--text-2");
+    ctx.textBaseline = "bottom";
+    ctx.textAlign = "right";
+    ctx.fillText("Measured", xNow - 6, chartArea.top - 6);
+    ctx.textAlign = "left";
+    ctx.fillText("Forecast", xNow + 6, chartArea.top - 6);
     ctx.restore();
   },
 };
@@ -1262,75 +1337,138 @@ function renderForecastChart() {
   const g = state.gauges.find(x => x.id === state.selected);
   const box = document.getElementById("forecast-box");
   const info = document.getElementById("forecast-info");
+  if (state.charts.forecast) { state.charts.forecast.destroy(); state.charts.forecast = null; }
+  info.textContent = "";
+  const say = text => { const p = document.createElement("p"); p.textContent = text; info.appendChild(p); };
+
+  // Today: the day of the latest hourly reading (district time, PST), or the Pacific date if there is none.
+  const measuredOk = !!(g && g.ok);
+  const todayStart = measuredOk ? g.last - (g.last % 24) : toHour(pacificToday());
+  const slots = [];
+  for (let k = -PAST_DAYS; k <= NEXT_DAYS; k++) slots.push(todayStart + 24 * k);
+  const isoOf = h => hourDate(h).toISOString().slice(0, 10);
+
+  // Forecast days, matched to the slots by date. Days already past are not shown.
   const f = state.forecast;
   const entry = f && g ? f.gauges[g.id] : null;
-  const today = pacificToday();
-  const days = entry ? (entry.days || []).filter(d => d.date >= today) : [];  // skip days already past
-  if (state.charts.forecast) { state.charts.forecast.destroy(); state.charts.forecast = null; }
-  if (!days.length) {
+  const fdays = {};
+  for (const d of (entry && entry.days) || []) fdays[d.date] = d;
+  const forecastOk = slots.slice(PAST_DAYS).some(h => fdays[isoOf(h)]);
+
+  if (!measuredOk && !forecastOk) {
     box.hidden = true;
-    info.textContent = "The forecast isn't available right now.";
+    say("Measured rain for this gauge and the forecast aren't available right now.");
     info.hidden = false;
     return;
   }
   box.hidden = false;
 
-  const partial = days.some(d => !d.complete);
-  const narrow = window.innerWidth < 600;  // phones: weekday only ("Fri"); the full date is in the tooltip
-  const fullNames = days.map(d => {
-    const [yy, mm, dd] = d.date.split("-").map(Number);
-    return `${WEEKDAYS[new Date(Date.UTC(yy, mm - 1, dd)).getUTCDay()]}, ${MONTHS[mm - 1]} ${dd}`;
+  const measured = slots.map((h, i) => (i <= PAST_DAYS ? measuredDay(g, h) : null));
+  const fc = slots.map((h, i) => (i >= PAST_DAYS ? fdays[isoOf(h)] || null : null));
+  const narrow = window.innerWidth < 600;
+  const fullNames = slots.map(h => { const d = hourDate(h); return `${WEEKDAYS[d.getUTCDay()]}, ${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`; });
+  const labels = slots.map((h, i) => {
+    const d = hourDate(h);
+    // Chance of rain under each forecast day ("98%"; on phones just "98", explained in the notes, to fit).
+    const chance = fc[i] ? (fc[i].chance_max_pct == null ? "–" : `${fc[i].chance_max_pct}${narrow ? "" : "%"}`) : "";
+    const star = fc[i] && !fc[i].complete && i > PAST_DAYS ? "*" : "";
+    if (i === PAST_DAYS) return narrow ? ["Now", "", chance] : ["Today", chance];
+    if (narrow) return [WEEKDAYS[d.getUTCDay()].slice(0, 2) + star, String(d.getUTCDate()), chance];
+    return [`${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()}${star}`, chance];
   });
-  const labels = days.map((d, i) => {
-    const name = d.date === today ? "Today" : narrow ? fullNames[i].slice(0, 3) : fullNames[i].replace(/,.* /, " ");
-    return [name + (d.complete ? "" : "*"), d.chance_max_pct == null ? "–" : `${d.chance_max_pct}%`];
-  });
-  const values = days.map(d => d.rain_in);
 
-  // The line under the chart: the week's total, when NWS updated the forecast, and any problems.
-  const known = values.filter(v => v != null);
-  const total = known.reduce((a, b) => a + b, 0);
-  const parts = [`Next ${days.length} days: ${known.length < values.length ? "at least " : ""}${total.toFixed(2)} in expected.`];
-  if (entry.nws_updated) parts.push(`Forecast updated ${fmtPacific(entry.nws_updated)}.`);
-  if (partial) parts.push("* Only part of this day is covered by the forecast (for today, it may include hours that have already passed).");
-  if (entry.fetched_at && Date.now() - Date.parse(entry.fetched_at) > FORECAST_STALE_HOURS * HOUR_MS) {
-    parts.push(`This forecast is more than ${FORECAST_STALE_HOURS} hours old; the latest update didn't arrive.`);
+  // The notes under the chart.
+  const past = measured.slice(0, PAST_DAYS);
+  const known = past.filter(m => m.value != null);
+  const pastTotal = known.reduce((a, m) => a + m.value, 0);
+  if (measuredOk) {
+    const today = measured[PAST_DAYS];
+    const lastHour = `${hourDate(g.last).getUTCHours() % 12 || 12} ${hourDate(g.last).getUTCHours() < 12 ? "AM" : "PM"}`;
+    say(`Measured, last 7 days: ${known.length < PAST_DAYS ? "at least " : ""}${pastTotal.toFixed(2)} in` +
+        (today.value != null ? `, plus ${today.value.toFixed(2)} in so far today (through the ${lastHour} hour).` : "."));
+    const gaps = past.map((m, i) => (m.value != null && m.hours < 24 ? fullNames[i] : null)).filter(Boolean);
+    if (gaps.length) say(`Some hours have no data on ${gaps.join(", ")}, so those totals may be low.`);
+  } else {
+    say("Measured rain for this gauge couldn't be loaded, so only the forecast is shown.");
   }
-  info.textContent = parts.join(" ");
+  if (forecastOk) {
+    const next = fc.slice(PAST_DAYS).filter(Boolean);
+    const vals = next.map(d => d.rain_in);
+    const sum = vals.filter(v => v != null).reduce((a, b) => a + b, 0);
+    say(`Forecast, today and the next ${NEXT_DAYS} days: ${vals.some(v => v == null) ? "at least " : ""}${sum.toFixed(2)} in` +
+        (entry.nws_updated ? ` (National Weather Service, updated ${fmtPacific(entry.nws_updated)}).` : "."));
+    if (entry.fetched_at && Date.now() - Date.parse(entry.fetched_at) > FORECAST_STALE_HOURS * HOUR_MS) {
+      say(`This forecast is more than ${FORECAST_STALE_HOURS} hours old; the latest update didn't arrive.`);
+    }
+  } else {
+    say("The forecast isn't available right now.");
+  }
+  if (measuredOk && forecastOk) {
+    say("Today has two bars: rain measured so far (solid) and the forecast for all of today (striped). " +
+        "They overlap in time (the forecast can include hours already past), so don't add them.");
+  }
+  say("Measured days run midnight to midnight PST (the district's time). – means no data. Gauge outages can appear as zero rainfall.");
+  if (narrow && forecastOk) say("The numbers under the forecast days are the chance of rain, in %.");
+  if (fc.some((d, i) => d && !d.complete && i > PAST_DAYS)) say("* Only part of this day is covered by the forecast.");
   info.hidden = false;
 
+  const accent = css("--accent");
   state.charts.forecast = new Chart(document.getElementById("forecast-chart"), {
     type: "bar",
     data: {
       labels,
-      datasets: [{
-        data: values,
-        backgroundColor: css("--accent"),
-        borderRadius: 4,
-        borderSkipped: "bottom",
-        maxBarThickness: 36,
-      }],
+      datasets: [
+        {
+          label: "Measured (gauge)",
+          data: measured.map(m => (m ? m.value : null)),
+          slotUsed: measured.map(m => !!m && measuredOk),
+          backgroundColor: accent,
+          borderRadius: 3,
+          borderSkipped: "bottom",
+          maxBarThickness: 30,
+          skipNull: true,
+        },
+        {
+          label: "Forecast (NWS)",
+          data: fc.map(d => (d ? d.rain_in : null)),
+          slotUsed: fc.map(d => !!d),
+          backgroundColor: stripes(accent),
+          borderColor: accent,
+          borderWidth: 1.5,
+          borderRadius: 3,
+          borderSkipped: "bottom",
+          maxBarThickness: 30,
+          skipNull: true,
+        },
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: false,
-      layout: { padding: { top: 18 } },
+      layout: { padding: { top: 22 } },
       plugins: {
-        legend: { display: false },
+        legend: { position: "bottom", labels: { color: css("--text"), boxWidth: 14, boxHeight: 12 } },
         tooltip: {
+          filter: item => item.dataset.slotUsed[item.dataIndex],
           callbacks: {
-            title: items => items.length ? fullNames[items[0].dataIndex] : "",
+            title: items => items.length ? (items[0].dataIndex === PAST_DAYS ? `Today, ${fullNames[PAST_DAYS].split(", ")[1]}` : fullNames[items[0].dataIndex]) : "",
             label: c => {
-              const d = days[c.dataIndex];
-              const rain = d.rain_in == null ? "Expected rain unknown" : `${d.rain_in.toFixed(2)} in expected`;
-              return `${rain}, ${d.chance_max_pct == null ? "chance unknown" : `${d.chance_max_pct}% chance of rain`}`;
+              const i = c.dataIndex;
+              if (c.datasetIndex === 0) {
+                const m = measured[i];
+                if (m.value == null) return "Measured: no data";
+                return `Measured: ${m.value.toFixed(2)} in${i === PAST_DAYS ? " so far" : ""}${m.hours < 24 && i !== PAST_DAYS ? ` (${m.hours} of 24 hours have data)` : ""}`;
+              }
+              const d = fc[i];
+              const rain = d.rain_in == null ? "amount unknown" : `${d.rain_in.toFixed(2)} in expected`;
+              return `Forecast: ${rain}, ${d.chance_max_pct == null ? "chance unknown" : `${d.chance_max_pct}% chance of rain`}`;
             },
           },
         },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: css("--text-2"), maxRotation: 0, autoSkip: false, font: { size: narrow ? 11 : 12 } } },
+        x: { grid: { display: false }, ticks: { color: css("--text-2"), maxRotation: 0, autoSkip: false, padding: 2, font: { size: narrow ? 9 : 11 } } },
         y: {
           beginAtZero: true,
           suggestedMax: 0.25,  // small amounts don't look like big storms
@@ -1341,7 +1479,7 @@ function renderForecastChart() {
         },
       },
     },
-    plugins: [forecastLabels],
+    plugins: [dailyChartExtras],
   });
 }
 
