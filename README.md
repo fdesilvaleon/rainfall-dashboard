@@ -162,13 +162,13 @@ request per grid cell per run, at most 2 retries (after 30 seconds, then 2
 minutes), and if a request still fails no more NWS requests are made until the
 next run. Requests use the same User-Agent as the rest of the project.
 
-### `data/forecast_history.csv`: a daily copy of the forecast
+### `data/forecast_history.csv`: a copy of every new forecast
 
-Once a day, the collector keeps a copy of the NWS forecast it has just fetched,
-so past forecasts can later be compared with the rain the gauges measured. It
-comes from `forecast_history.py`.
+The collector keeps a copy of each new NWS forecast it sees, so past forecasts
+can later be compared with the rain the gauges measured. It comes from
+`forecast_history.py`.
 
-One row per gauge, per day forecast (target day), per daily snapshot:
+One row per gauge, per target day, per NWS issue time:
 
 | Column | Meaning |
 |---|---|
@@ -181,35 +181,57 @@ One row per gauge, per day forecast (target day), per daily snapshot:
 | `chance_pct` | highest chance of rain that day, in %; blank if unknown |
 | `partial_day` | 1 if the forecast covered only part of that day (as marked in `forecast.json`), otherwise 0 |
 
-**When:** the first collector run at or after 6 AM Pacific time each day. At
-most one snapshot per Pacific date. If the forecast is missing, had a problem,
-or is stale (more than 6 hours old, the same rule the dashboard uses), nothing
-is saved in that run, the reason is logged, and the next run that day tries
-again. Rows are only ever added at the end; old rows are never changed or
-deleted. A problem here never stops the rainfall data or the forecast from
-being saved. The file grows by about 49 rows (roughly 3.5 KB) a day, about
-1.3 MB a year.
+**When rows are saved:** every collector run (hourly) looks at the forecast it
+has just fetched. For each gauge, if NWS's issue time (`snapshot_time`) isn't in
+the history yet for that gauge, its rows are added. The same issue time is never
+saved twice, even if a run is repeated. Each gauge is checked on its own because
+the NWS grid cells don't always update at the same moment. A missing forecast, a
+failed fetch or one with a recorded error saves nothing, and the reason is
+logged. A problem here never stops the rainfall data or the forecast from being
+saved.
 
-**What it can tell us:** how each day's forecast changed as the day got closer
-(compare rows with the same `gauge_id` and `target_date` but different
-`lead_days`), and, once that day's rain has been measured, how far off the
-forecast was.
+**Trimming:** only target days 0 to 3 days ahead are kept (up to 4 rows per
+gauge, 28 per issue time). Rows saved before Nov 12, 2026 (two daily snapshots)
+have all 7 days. Rows are only ever added at the end; old rows are never changed
+or deleted.
+
+**Backfill:** the forecasts issued between Nov 11 (1:36 PM Pacific) and Nov 12,
+2026 were added from the earlier copies of `data/forecast.json` in this
+repository's history (`python forecast_history.py --backfill-from-git`). Their
+`saved_at` is when that copy was committed.
+
+**Size:** NWS updated the forecast about 7 times a day in the first day of
+records, so the file grows by about 200 rows (14 KB) a day, roughly 5 MB a year.
+
+**What it can tell us:** how the forecast for a day changed as the day got
+closer (rows with the same `gauge_id` and `target_date`, by `snapshot_time` or
+`lead_days`), and, once the rain has been measured, how far off each forecast was.
 
 **What it can't tell us:**
 
-- It starts on Nov 11, 2026. Older forecasts aren't available and weren't
-  backfilled. The first two days were taken from the earlier copies of
-  `forecast.json` in this repository's history: Nov 11 from the first forecast
-  saved (2:19 PM Pacific, so later than 6 AM), and Nov 12 from the forecast
-  current at the first run after 6 AM.
-- It keeps one snapshot a day, not every NWS update.
+- It starts on Nov 11, 2026. Older forecasts aren't available.
+- It only sees the forecast as our hourly runs fetched it. An NWS update that was
+  replaced within the hour would be missed.
+- NWS's issue time also changes when only other parts of the forecast change
+  (temperature, wind), so several rows in a row can have the same rain numbers.
+- There are usually several rows for the same `target_date` and `lead_days`
+  (several updates on the same day). Pick one (for example the latest) before
+  comparing.
 - A same-day forecast (`lead_days` 0) can include hours that had already passed
   when NWS issued it.
-- Forecast days follow Pacific local time (with daylight saving time), while
-  the gauges' days are PST all year, so from March to November the two "days"
-  are an hour apart.
+- Forecast days follow Pacific local time (with daylight saving time), while the
+  gauges' days are PST all year, so from March to November they're an hour apart.
 - Gauge outages can appear as zero rainfall, which would make a forecast look
   wrong when the gauge was the problem.
+
+### `data/forecast_history_recent.csv`: the last few weeks
+
+The same columns, but only rows whose `target_date` is 21 days ago or later,
+sorted by `target_date` then `snapshot_time`. It is rebuilt from the full
+history file every run (and only rewritten when its contents change), so it
+should never be edited by hand. It stays small (a few hundred KB) for the
+dashboard to read. If it can't be written, the problem is logged and the run
+carries on.
 
 ## Attribution and disclaimer
 

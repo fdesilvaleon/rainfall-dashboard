@@ -6,7 +6,7 @@ rain and updates:
   data/history/<id>_daily.csv  daily rain history
   data/stats.json              statistics for the website (recomputed every run)
   data/forecast.json           the National Weather Service's 7-day rain forecast (see forecast.py)
-  data/forecast_history.csv    once a day, a copy of that forecast (see forecast_history.py)
+  data/forecast_history.csv    a copy of each new NWS forecast, 0-3 days ahead (see forecast_history.py)
 
 Polite access: one request per gauge, at least 5 seconds apart. On an error or
 timeout a request is tried again at most twice (after 30 s, then 2 min). If it
@@ -83,9 +83,9 @@ def main():
         fc = forecast.update(gauges)
     except Exception as e:
         print(f"Forecast not updated ({e})", file=sys.stderr)
-    # Once a day, keep a copy of the forecast just fetched. This can never fail the run either.
+    # Keep a copy of the forecast just fetched if NWS has issued a new one. This can never fail the run either.
     try:
-        forecast_history.save_daily_snapshot(fc)
+        forecast_history.save_snapshot(fc)
     except Exception as e:
         print(f"Forecast history not updated ({e})", file=sys.stderr)
     # Only report failure if every gauge failed, so one bad gauge doesn't stop the others being saved.
