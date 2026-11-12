@@ -162,6 +162,55 @@ request per grid cell per run, at most 2 retries (after 30 seconds, then 2
 minutes), and if a request still fails no more NWS requests are made until the
 next run. Requests use the same User-Agent as the rest of the project.
 
+### `data/forecast_history.csv`: a daily copy of the forecast
+
+Once a day, the collector keeps a copy of the NWS forecast it has just fetched,
+so past forecasts can later be compared with the rain the gauges measured. It
+comes from `forecast_history.py`.
+
+One row per gauge, per day forecast (target day), per daily snapshot:
+
+| Column | Meaning |
+|---|---|
+| `snapshot_time` | when NWS issued or last updated that forecast (UTC) |
+| `saved_at` | when we saved it (UTC) |
+| `gauge_id` | the gauge |
+| `target_date` | the day the forecast is for (Pacific local date) |
+| `lead_days` | `target_date` minus the Pacific local date of `snapshot_time` (0 = same day, 1 = next day, ...) |
+| `expected_in` | expected rain that day, in inches; **blank, not 0, if NWS gave no amount** |
+| `chance_pct` | highest chance of rain that day, in %; blank if unknown |
+| `partial_day` | 1 if the forecast covered only part of that day (as marked in `forecast.json`), otherwise 0 |
+
+**When:** the first collector run at or after 6 AM Pacific time each day. At
+most one snapshot per Pacific date. If the forecast is missing, had a problem,
+or is stale (more than 6 hours old, the same rule the dashboard uses), nothing
+is saved in that run, the reason is logged, and the next run that day tries
+again. Rows are only ever added at the end; old rows are never changed or
+deleted. A problem here never stops the rainfall data or the forecast from
+being saved. The file grows by about 49 rows (roughly 3.5 KB) a day, about
+1.3 MB a year.
+
+**What it can tell us:** how each day's forecast changed as the day got closer
+(compare rows with the same `gauge_id` and `target_date` but different
+`lead_days`), and, once that day's rain has been measured, how far off the
+forecast was.
+
+**What it can't tell us:**
+
+- It starts on Nov 11, 2026. Older forecasts aren't available and weren't
+  backfilled. The first two days were taken from the earlier copies of
+  `forecast.json` in this repository's history: Nov 11 from the first forecast
+  saved (2:19 PM Pacific, so later than 6 AM), and Nov 12 from the forecast
+  current at the first run after 6 AM.
+- It keeps one snapshot a day, not every NWS update.
+- A same-day forecast (`lead_days` 0) can include hours that had already passed
+  when NWS issued it.
+- Forecast days follow Pacific local time (with daylight saving time), while
+  the gauges' days are PST all year, so from March to November the two "days"
+  are an hour apart.
+- Gauge outages can appear as zero rainfall, which would make a forecast look
+  wrong when the gauge was the problem.
+
 ## Attribution and disclaimer
 
 Data: Santa Clara Valley Water ALERT system
