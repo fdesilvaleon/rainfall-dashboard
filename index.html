@@ -30,6 +30,8 @@
     --last-year: #eb6834;
     --average: #52514e;
     --range: rgba(82, 81, 78, 0.13);
+    --shade-measured: rgba(82, 81, 78, 0.06);   /* "Last 7 days and next 7 days": background of the measured side */
+    --shade-forecast: rgba(42, 120, 214, 0.07); /* ... and of the forecast side */
     --bar: #8a8984;  /* one neutral color for the % of normal bars */
   }
   @media (prefers-color-scheme: dark) {
@@ -53,6 +55,8 @@
       --last-year: #d95926;
       --average: #c3c2b7;
       --range: rgba(195, 194, 183, 0.16);
+      --shade-measured: rgba(240, 239, 236, 0.05);
+      --shade-forecast: rgba(85, 152, 231, 0.11);
       --bar: #7d7c76;
     }
   }
@@ -1297,9 +1301,22 @@ function measuredDay(g, dayStart) {
 
 const PAST_DAYS = 7, NEXT_DAYS = 6;  // today sits between them, so 15 slots in all
 
-// Draws the "now" divider through today's slot, the Measured / Forecast labels, and each bar's amount.
+// Shades the measured and forecast sides (split at the middle of today's slot), writes their headings,
+// and writes each bar's amount.
 const dailyChartExtras = {
   id: "dailyChartExtras",
+  beforeDraw(chart) {
+    // Drawn before the gridlines and bars, so both stay visible on top of the shading.
+    const { ctx, chartArea, scales: { x } } = chart;
+    const split = x.getPixelForValue(PAST_DAYS);
+    const top = chartArea.top - 20;  // include the headings row
+    ctx.save();
+    ctx.fillStyle = css("--shade-measured");
+    ctx.fillRect(chartArea.left, top, split - chartArea.left, chartArea.bottom - top);
+    ctx.fillStyle = css("--shade-forecast");
+    ctx.fillRect(split, top, chartArea.right - split, chartArea.bottom - top);
+    ctx.restore();
+  },
   afterDatasetsDraw(chart) {
     const { ctx, chartArea, scales: { x, y } } = chart;
     const narrow = chart.width < 500;
@@ -1349,23 +1366,15 @@ const dailyChartExtras = {
         ctx.textAlign = "center";
       });
     });
-    // The divider: through the middle of today's slot, between today's measured and forecast bars.
-    const xNow = x.getPixelForValue(PAST_DAYS);
-    ctx.strokeStyle = css("--text-2");
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    ctx.moveTo(xNow, chartArea.top - 16);
-    ctx.lineTo(xNow, chartArea.bottom);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    // Headings at the top of each shaded side, either side of the middle of today's slot.
+    const split = x.getPixelForValue(PAST_DAYS);
     ctx.font = font(narrow ? 10 : 12);
     ctx.fillStyle = css("--text-2");
     ctx.textBaseline = "bottom";
     ctx.textAlign = "right";
-    ctx.fillText("Measured", xNow - 6, chartArea.top - 6);
+    ctx.fillText("Measured", split - 6, chartArea.top - 6);
     ctx.textAlign = "left";
-    ctx.fillText("Forecast", xNow + 6, chartArea.top - 6);
+    ctx.fillText("Forecast", split + 6, chartArea.top - 6);
     ctx.restore();
   },
 };
@@ -1412,7 +1421,6 @@ function renderForecastChart() {
     // Chance of rain under each forecast day ("98%"; on phones just "98", explained in the notes, to fit).
     const chance = fc[i] ? (fc[i].chance_max_pct == null ? "–" : `${fc[i].chance_max_pct}${narrow ? "" : "%"}`) : "";
     const star = (fc[i] && !fc[i].complete && i > PAST_DAYS) || pastPartial(i) ? "*" : "";
-    if (i === PAST_DAYS) return narrow ? ["Now", "", chance] : ["Today", chance];
     if (narrow) return [WEEKDAYS[d.getUTCDay()].slice(0, 2) + star, String(d.getUTCDate()), chance];
     return [`${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()}${star}`, chance];
   });
@@ -1535,7 +1543,14 @@ function renderForecastChart() {
         },
       },
       scales: {
-        x: { grid: { display: false }, ticks: { color: css("--text-2"), maxRotation: 0, autoSkip: false, padding: 2, font: { size: narrow ? 9 : 11 } } },
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: c => (c.index === PAST_DAYS ? css("--text") : css("--text-2")),
+            maxRotation: 0, autoSkip: false, padding: 2,
+            font: c => ({ size: narrow ? 9 : 11, weight: c.index === PAST_DAYS ? "bold" : "normal" }),  // today in bold
+          },
+        },
         y: {
           beginAtZero: true,
           suggestedMax: 0.25,  // small amounts don't look like big storms
