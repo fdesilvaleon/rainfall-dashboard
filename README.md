@@ -80,7 +80,19 @@ midnight counts in the day before).
 
 Blank values mean there is no data for that hour. The most recent hour is
 updated on later runs as it fills in, and the last 48 hours are refreshed every
-run, so late or corrected readings are picked up.
+run, so late readings are picked up.
+
+**Saved rain is protected.** Valley Water's API reports 0 both when it's dry and
+when a gauge isn't reporting, and some runs get an answer with no rain at all for
+hours that did have rain (on Nov 14, 2026, several runs briefly wiped Nov 13's
+rain for two or three gauges each). So when a run re-fetches an hour that already
+has rain saved, a lower value (0 or smaller) is ignored and the saved value kept;
+the run's log says so ("API returned 0 for N hours that already had rain; kept
+saved values"). Larger values and hours with no saved rain go in as usual. The
+daily history and `stats.json` are built from this protected data, so they're
+protected too. **Trade-off:** if Valley Water ever legitimately corrects a value
+downward, the saved value stays until it is fixed by hand in `data/<gauge id>.csv`
+(and the matching day in `data/history/<gauge id>_daily.csv`).
 
 ### `data/history/<gauge id>_daily.csv`: daily, last 15 full water years
 

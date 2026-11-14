@@ -203,6 +203,91 @@ class CollectTests(TempDataDir):
         self.assertTrue(rf.STATS_FILE.exists())
 
 
+class ProtectSavedRainTests(TempDataDir):
+    """The 2026-11-14 problem: a run got an answer with no rain at all for hours that had rain (commit 15a803f)."""
+
+    gauge = {"id": "6048", "name": "Sunnyvale Hamilton WTP"}
+    # Rain on Nov 13 (PST): 10:00 hour 2 tips, 11:00 4 tips, 12:00 1 tip, 13:00 2 tips.
+    RAIN = [(datetime(2026, 11, 13, 10, 30), TIP), (datetime(2026, 11, 13, 11, 0), TIP),
+            (datetime(2026, 11, 13, 11, 15), 2 * TIP), (datetime(2026, 11, 13, 11, 45), 2 * TIP),
+            (datetime(2026, 11, 13, 12, 30), TIP), (datetime(2026, 11, 13, 13, 30), 2 * TIP)]
+
+    def run(self, result=None):
+        with mock.patch("sys.stdout", io.StringIO()):
+            return super().run(result)
+
+    def collect_once(self, now, readings):
+        messages = []
+        backfill_needed = not (rf.DATA_DIR / "6048.csv").exists()
+        if backfill_needed:  # give the gauge a long record so only the 48-hour window is fetched
+            backfill.build_gauge("6048", [(datetime(2015, 1, 5, 3, 0), TIP)], now - timedelta(hours=1))
+        collect.update_gauge(self.gauge, now, lambda gid, a, b: list(readings), log=messages.append)
+        return messages
+
+    def saved(self):
+        text = (rf.DATA_DIR / "6048.csv").read_text().splitlines()
+        return rf.read_hourly(rf.DATA_DIR / "6048.csv"), rf.read_daily(rf.HISTORY_DIR / "6048_daily.csv"), text[-1]
+
+    def test_all_zero_answer_does_not_erase_saved_rain(self):
+        self.collect_once(datetime(2026, 11, 14, 6, 49), self.RAIN)
+        rain_before, daily_before, last_before = self.saved()
+        self.assertAlmostEqual(daily_before[date(2026, 11, 13)], 9 * TIP, places=3)
+        # The bad run an hour later: the API answers with no rain at all.
+        messages = self.collect_once(datetime(2026, 11, 14, 7, 46), [])
+        rain_after, daily_after, last_after = self.saved()
+        self.assertEqual(messages, ["6048 Sunnyvale Hamilton WTP: API returned 0 for 4 hours that already had rain; kept saved values"])
+        for h in [datetime(2026, 11, 13, hh) for hh in (10, 11, 12, 13)]:
+            self.assertEqual(rain_after[h], rain_before[h])
+        self.assertEqual(daily_after[date(2026, 11, 13)], daily_before[date(2026, 11, 13)])
+        self.assertEqual(last_before.split(",")[1], last_after.split(",")[1])  # season total didn't go back
+        self.assertEqual(last_after.split(",")[0], "2026-11-14 07:00")
+
+    def test_lower_amount_is_kept_at_saved_value_but_larger_and_new_values_go_in(self):
+        self.collect_once(datetime(2026, 11, 14, 6, 49), self.RAIN)
+        later = [(datetime(2026, 11, 13, 10, 30), TIP), (datetime(2026, 11, 13, 10, 45), TIP), (datetime(2026, 11, 13, 10, 50), TIP),  # 3 tips: larger
+                 (datetime(2026, 11, 13, 11, 15), TIP),                                              # 1 tip instead of 4: lower
+                 (datetime(2026, 11, 13, 12, 30), TIP), (datetime(2026, 11, 13, 13, 30), 2 * TIP),  # same
+                 (datetime(2026, 11, 14, 7, 15), TIP)]                                               # newly arrived
+        messages = self.collect_once(datetime(2026, 11, 14, 7, 46), later)
+        rain, daily, _ = self.saved()
+        self.assertAlmostEqual(rain[datetime(2026, 11, 13, 10)], round(3 * TIP, 4))
+        self.assertAlmostEqual(rain[datetime(2026, 11, 13, 11)], round(4 * TIP, 4))  # kept
+        self.assertAlmostEqual(rain[datetime(2026, 11, 14, 7)], round(TIP, 4))
+        self.assertEqual(messages, ["6048 Sunnyvale Hamilton WTP: API returned 0 for 0 hours that already had rain"
+                                    " and lower amounts for 1 more; kept saved values"])
+
+    def test_normal_increase_and_unchanged_values_log_nothing(self):
+        self.collect_once(datetime(2026, 11, 14, 6, 49), self.RAIN)
+        messages = self.collect_once(datetime(2026, 11, 14, 7, 46), self.RAIN + [(datetime(2026, 11, 14, 7, 30), 2 * TIP)])
+        rain, daily, last = self.saved()
+        self.assertEqual(messages, [])  # 0.03937 from the API isn't "lower" than a saved 0.0394
+        self.assertAlmostEqual(rain[datetime(2026, 11, 14, 7)], round(2 * TIP, 4))
+        self.assertAlmostEqual(daily[date(2026, 11, 14)], 2 * TIP, places=3)
+
+    def test_stats_built_from_protected_data(self):
+        gauges = [{"id": g, "name": g} for g in ("6048", "6121", "6129")]
+        rainy = [(datetime(2026, 11, 13, 9 + k, 30), 0.2) for k in range(4)]  # 0.8 in on Nov 13 at every gauge
+        answers = {"6048": rainy, "6121": rainy, "6129": rainy}
+
+        def run_main(now):
+            with mock.patch.object(rf, "load_gauges", return_value=gauges), \
+                 mock.patch.object(rf, "fetch_rain", lambda gid, a, b, pacer: list(answers[gid])), \
+                 mock.patch.object(rf, "now_pst", return_value=now), \
+                 mock.patch.object(collect.forecast, "update"), \
+                 mock.patch("sys.stderr", io.StringIO()):
+                collect.main()
+            return json.loads(rf.STATS_FILE.read_text())
+
+        for g in ("6048", "6121", "6129"):
+            backfill.build_gauge(g, [(datetime(2015, 1, 5, 3, 0), TIP)], datetime(2026, 11, 14, 5, 50))
+        good = run_main(datetime(2026, 11, 14, 6, 49))
+        answers["6048"] = []  # the bad answer for one gauge
+        bad = run_main(datetime(2026, 11, 14, 7, 46))
+        self.assertEqual(bad["gauges"]["6048"]["suspected_outages"], good["gauges"]["6048"]["suspected_outages"])
+        self.assertEqual(bad, good)
+        self.assertAlmostEqual(rf.read_daily(rf.HISTORY_DIR / "6048_daily.csv")[date(2026, 11, 13)], 0.8)
+
+
 class StatsTests(unittest.TestCase):
     def history(self, first_day, last_day, per_day, gaps=()):
         """Daily rain: `per_day` in on every day; days before first_day or in gaps are blank (no data)."""
