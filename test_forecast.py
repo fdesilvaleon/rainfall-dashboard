@@ -145,13 +145,33 @@ class StepTests(unittest.TestCase):
         forecast.update(GAUGES, NOW, lambda url: {"properties": {}}, self.log)
         self.assertIsNotNone(json.loads(forecast.forecast_file().read_text())["last_error"])
 
-    def test_file_not_rewritten_when_only_fetch_time_changes(self):
+    def test_unchanged_forecast_only_updates_checked_at(self):
         fetch, _ = self.fake_nws()
         forecast.update(GAUGES, NOW, fetch, self.log)
-        first = forecast.forecast_file().read_text()
+        first = json.loads(forecast.forecast_file().read_text())
+        self.assertEqual(first["checked_at"], "2026-11-11T14:20:00-08:00")
         fetch, _ = self.fake_nws()
-        forecast.update(GAUGES, datetime(2026, 11, 11, 15, 20, tzinfo=forecast.LOCAL), fetch, self.log)
-        self.assertEqual(forecast.forecast_file().read_text(), first)
+        messages = []
+        forecast.update(GAUGES, datetime(2026, 11, 11, 15, 20, tzinfo=forecast.LOCAL), fetch, messages.append)
+        second = json.loads(forecast.forecast_file().read_text())
+        self.assertEqual(second["checked_at"], "2026-11-11T15:20:00-08:00")  # every successful check
+        self.assertEqual(second["fetched_at"], first["fetched_at"])          # same forecast: fetch times kept
+        self.assertEqual(second["gauges"], first["gauges"])
+        self.assertEqual(messages, ["Forecast: no change"])
+
+    def test_failed_check_keeps_checked_at_and_records_error(self):
+        fetch, _ = self.fake_nws()
+        forecast.update(GAUGES, NOW, fetch, self.log)
+        fetch, _ = self.fake_nws(fail=True)
+        forecast.update(GAUGES, datetime(2026, 11, 11, 17, 20, tzinfo=forecast.LOCAL), fetch, self.log)
+        saved = json.loads(forecast.forecast_file().read_text())
+        self.assertEqual(saved["checked_at"], "2026-11-11T14:20:00-08:00")  # the last successful check
+        self.assertEqual(saved["last_error"]["time"], "2026-11-11T17:20:00-08:00")
+        # The next successful check clears the error and moves checked_at.
+        fetch, _ = self.fake_nws()
+        forecast.update(GAUGES, datetime(2026, 11, 11, 18, 20, tzinfo=forecast.LOCAL), fetch, self.log)
+        saved = json.loads(forecast.forecast_file().read_text())
+        self.assertEqual((saved["checked_at"], saved["last_error"]), ("2026-11-11T18:20:00-08:00", None))
 
     def test_requests_are_polite(self):
         clock, seen = FakeClock(), []

@@ -177,14 +177,17 @@ def read_json(path):
         return None
 
 
+def strip(x, keys=("fetched_at",)):
+    """The data without the given keys (at any depth), for comparing contents."""
+    if isinstance(x, dict):
+        return {k: strip(v, keys) for k, v in x.items() if k not in keys}
+    if isinstance(x, list):
+        return [strip(v, keys) for v in x]
+    return x
+
+
 def write_if_changed(path, data):
     """Write the file only if something other than fetch times changed. Returns True if written."""
-    def strip(x):
-        if isinstance(x, dict):
-            return {k: strip(v) for k, v in x.items() if k != "fetched_at"}
-        if isinstance(x, list):
-            return [strip(v) for v in x]
-        return x
     old = read_json(path)
     if old is not None and strip(old) == strip(data):
         return False
@@ -205,9 +208,19 @@ def update(gauges, now=None, fetch=None, log=print):
         out, error = build(gauges, now, fetch, previous, log)
     except Exception as e:  # anything unexpected: keep what we had
         out, error = dict(previous) if previous else {"gauges": {}}, f"{type(e).__name__}: {e}"
+    status = ("checked" if not error else "problem")
+    if not error and previous and strip(previous, ("fetched_at", "checked_at", "last_error")) == strip(out, ("fetched_at", "checked_at", "last_error")):
+        # Same forecast as before: keep the earlier fetch times, so fetched_at still means
+        # "when this forecast was fetched". checked_at (below) records this check.
+        out = json.loads(json.dumps(previous))
+        status = "no change"
+    elif not error:
+        status = "updated"
+    # checked_at: the last time NWS was checked successfully. A failed check keeps the previous one.
+    out["checked_at"] = previous.get("checked_at") if error else stamp
     out["last_error"] = {"time": stamp, "message": error} if error else None
-    written = write_if_changed(forecast_file(), out)
-    log(f"Forecast: {'updated' if written else 'no change'}" + (f" (problem: {error})" if error else ""))
+    write_if_changed(forecast_file(), out)
+    log(f"Forecast: {status}" + (f" ({error})" if error else ""))
     return out
 
 

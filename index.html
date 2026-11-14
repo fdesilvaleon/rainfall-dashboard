@@ -1253,7 +1253,8 @@ function chartsAvailable() {
 
 // ---------- selected gauge: 7-day forecast ----------
 
-const FORECAST_STALE_HOURS = 6;
+const FORECAST_STALE_HOURS = 6;  // an NWS issue time older than this gets a note
+const CHECK_STALE_HOURS = 3;     // our last successful check older than this means the forecast couldn't be refreshed
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function pacificToday() {  // "YYYY-MM-DD" in Pacific local time, where the forecast days are counted
@@ -1445,7 +1446,16 @@ function renderForecastChart() {
     const sum = vals.filter(v => v != null).reduce((a, b) => a + b, 0);
     say(`Forecast, today and the next ${NEXT_DAYS} days: ${vals.some(v => v == null) ? "at least " : ""}${sum.toFixed(2)} in` +
         (entry.nws_updated ? ` (National Weather Service, updated ${fmtPacific(entry.nws_updated)}).` : "."));
-    if (entry.fetched_at && Date.now() - Date.parse(entry.fetched_at) > FORECAST_STALE_HOURS * HOUR_MS) {
+    const age = iso => Date.now() - Date.parse(iso);
+    if (f.checked_at) {
+      // The collector records each successful check of NWS (checked_at), even when the forecast is unchanged.
+      if (f.last_error || age(f.checked_at) > CHECK_STALE_HOURS * HOUR_MS) {
+        say(`The forecast couldn't be refreshed recently (last successful check ${fmtPacific(f.checked_at)} Pacific time), so it may be out of date.`);
+      } else if (entry.nws_updated && age(entry.nws_updated) > FORECAST_STALE_HOURS * HOUR_MS) {
+        say(`Forecast issued by NWS on ${fmtPacific(entry.nws_updated)} Pacific time. NWS hasn't published a newer one yet.`);
+      }
+    } else if (entry.fetched_at && age(entry.fetched_at) > FORECAST_STALE_HOURS * HOUR_MS) {
+      // Older files without checked_at: the previous rule.
       say(`This forecast is more than ${FORECAST_STALE_HOURS} hours old; the latest update didn't arrive.`);
     }
   } else {

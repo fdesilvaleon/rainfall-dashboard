@@ -161,13 +161,22 @@ For each gauge:
     only a trace is likely.
   - `periods`: the forecast periods counted for that day, as NWS gave them.
 
-Top level: `fetched_at` (the last time a new forecast was fetched) and
-`last_error` (`null`, or the time and message of the last problem).
+Top level: `fetched_at` (the last time a new forecast was fetched),
+`checked_at` (the last time NWS was checked successfully, updated every hourly
+run even when the forecast hasn't changed) and `last_error` (`null`, or the time
+and message of the last problem).
 
-**If the forecast can't be fetched,** the previous `forecast.json` is kept, the
-problem is recorded in `last_error`, and the run carries on: the forecast never
-stops the rainfall data from being saved. The file is only rewritten when its
-contents change.
+**If the forecast can't be fetched,** the previous `forecast.json` is kept
+(including its `checked_at`), the problem is recorded in `last_error`, and the
+run carries on: the forecast never stops the rainfall data from being saved.
+When NWS hasn't published anything new, only `checked_at` changes.
+
+**On the dashboard:** NWS sometimes publishes nothing for several hours (often
+overnight). If our last successful check was within 3 hours and there was no
+error, a forecast issued more than 6 hours ago gets a neutral note ("NWS hasn't
+published a newer one yet"). A warning that the forecast couldn't be refreshed
+appears only when the last successful check is more than 3 hours old or the
+last check failed.
 
 **Polite access to the NWS API:** at least 5 seconds between requests, one
 request per grid cell per run, at most 2 retries (after 30 seconds, then 2
