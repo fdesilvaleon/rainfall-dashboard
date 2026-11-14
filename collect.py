@@ -31,7 +31,29 @@ def first_missing_hour(rain, first, last):
     return None
 
 
-def update_gauge(gauge, now, fetch):
+def protect_saved_rain(saved, fresh):
+    """Keep rain already saved when a re-fetch says less for the same hour.
+
+    Valley Water's API reports 0 both when it's dry and when a gauge isn't reporting, and some
+    runs get an answer with no rain at all for hours that did have rain. So for any hour already
+    saved with rain, a lower new value (0 or smaller) is ignored and the saved value kept. Larger
+    or newly arrived values go in as usual. Changes `fresh` in place; returns (hours that came back
+    as 0, hours that came back lower but not 0).
+    """
+    zeroed = lowered = 0
+    for h, value in fresh.items():
+        old = saved.get(h)
+        # Compare at the precision values are saved with (4 decimals), so 0.03937 isn't "lower" than a saved 0.0394.
+        if old and round(value, 4) < round(old, 4):
+            if value == 0:
+                zeroed += 1
+            else:
+                lowered += 1
+            fresh[h] = old
+    return zeroed, lowered
+
+
+def update_gauge(gauge, now, fetch, log=print):
     """Fetch recent rain for one gauge and update its files. Returns (number of rainy values, first day fetched)."""
     gid = gauge["id"]
     hourly_path = rf.DATA_DIR / f"{gid}.csv"
@@ -47,8 +69,17 @@ def update_gauge(gauge, now, fetch):
         start_day = gap.date()
 
     readings = fetch(gid, start_day, now.date())
-    # Hours in the fetched period are replaced, so late or corrected readings are picked up.
-    rain.update(rf.hourly_totals(readings, datetime.combine(start_day, dtime()), current_hour))
+    # Hours in the fetched period are replaced, so late readings are picked up, but a re-fetch can
+    # never erase or lower rain already saved. The daily file and stats.json are built from this
+    # protected data, so they're protected too.
+    fresh = rf.hourly_totals(readings, datetime.combine(start_day, dtime()), current_hour)
+    zeroed, lowered = protect_saved_rain(rain, fresh)
+    if zeroed or lowered:
+        msg = f"{gid} {gauge.get('name', gid)}: API returned 0 for {zeroed} hours that already had rain"
+        if lowered:
+            msg += f" and lower amounts for {lowered} more"
+        log(msg + "; kept saved values")
+    rain.update(fresh)
 
     daily = rf.read_daily(daily_path)
     for d in rf.days_between(start_day, now.date()):
