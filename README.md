@@ -272,7 +272,7 @@ mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Each block gets the
   24-48 hours before + 1/4 of the rain 48-72 hours before. Measured hourly rain
   is used up to the latest measured hour, then the forecast (each 6-hour forecast
   period spread evenly). Only gauges with data for all 72 hours are averaged.
-  Running: under 0.02 in optimal, under 0.10 good, under 0.75 fair, otherwise
+  Running: under 0.1 in optimal, under 0.50 good, under 1.00 fair, otherwise
   poor. Biking: under 0.02, 0.05 and 0.15.
 - **Rain during the block** (forecast): under 0.01 in optimal; 0.01-0.15 good for
     running, fair for biking; more than 0.15 poor.
