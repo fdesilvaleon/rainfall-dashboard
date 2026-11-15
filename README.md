@@ -274,7 +274,7 @@ mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Each block gets the
   period spread evenly). Only gauges with data for all 72 hours are averaged.
   Running: under 0.02 in optimal, under 0.10 good, under 0.75 fair, otherwise
   poor. Biking: under 0.02, 0.05 and 0.15.
-  - **Rain during the block** (forecast): under 0.01 in optimal; 0.01-0.15 good for
+- **Rain during the block** (forecast): under 0.01 in optimal; 0.01-0.15 good for
     running, fair for biking; more than 0.15 poor.
 - **Comfort**, from the forecast feels-like temperature (`apparent_temp_f`): running
   optimal 45-68°F, good 38-45/68-78, fair 30-38/78-88, poor outside; biking
