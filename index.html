@@ -1659,9 +1659,9 @@ const TRAIL = {
   // A. Ground wetness = rain 0-24 h before the block + 1/2 x rain 24-48 h before + 1/4 x rain 48-72 h before.
   WETNESS_WEIGHTS: [1, 0.5, 0.25],
   // Limits in inches: under the 1st = Optimal, under the 2nd = Good, under the 3rd = Fair, otherwise Poor.
-  WETNESS: { running: [0.02, 0.10, 0.30], biking: [0.02, 0.05, 0.15] },
+  WETNESS: { running: [0.02, 0.10, 0.75], biking: [0.02, 0.05, 0.15] },
   // B. Forecast rain during the block (inches): under OPTIMAL_BELOW = Optimal; up to POOR_ABOVE = MIDDLE rating; above = Poor.
-  BLOCK_RAIN: { OPTIMAL_BELOW: 0.01, POOR_ABOVE: 0.05, MIDDLE: { running: 1, biking: 2 } },
+  BLOCK_RAIN: { OPTIMAL_BELOW: 0.01, POOR_ABOVE: 0.15, MIDDLE: { running: 1, biking: 2 } },
   // C. Comfort from the forecast feels-like temperature (F). Ranges are inclusive: at a boundary the better rating applies.
   COMFORT: {
     running: { optimal: [45, 68], good: [38, 78], fair: [30, 88] },
@@ -1670,7 +1670,7 @@ const TRAIL = {
 };
 // ==============================================================================================
 
-const SPORTS = [["running", "Running"], ["biking", "Biking (incl. gravel)"]];
+const SPORTS = [["running", "Running"], ["biking", "Biking"]];
 
 // The three checks. Values are compared as shown on the page (inches to 2 decimals, whole degrees).
 function rateWetness(sport, inches) {
@@ -1909,7 +1909,7 @@ function renderTrail() {
     };
     const table = el("table", null, "trail-table");
     const head1 = el("tr"), head2 = el("tr");
-    head1.append(el("th"), el("th", "Running", "group"), el("th", "Biking (incl. gravel)", "group"));
+    head1.append(el("th"), el("th", "Running", "group"), el("th", "Biking", "group"));
     head1.children[1].colSpan = 3; head1.children[2].colSpan = 3;
     head2.appendChild(el("th"));
     for (let k = 0; k < 2; k++) TRAIL.BLOCKS.forEach(b => head2.appendChild(el("th", b.name)));
