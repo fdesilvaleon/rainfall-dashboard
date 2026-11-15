@@ -114,6 +114,88 @@ def layer(props, name, unit):
     return out
 
 
+# ---------- feels-like temperature ----------
+
+def hourly(props, name, convert):
+    """{hour start (UTC): value} from one forecast layer, with values converted by convert[uom].
+    Missing layers or unknown units give {}."""
+    found = props.get(name)
+    if not found or found.get("uom") not in convert:
+        return {}
+    to = convert[found["uom"]]
+    out = {}
+    for item in found.get("values", []):
+        if item.get("value") is None:
+            continue
+        start, end = parse_interval(item["validTime"])
+        h = start.replace(minute=0, second=0, microsecond=0)
+        while h < end:
+            out[h] = to(item["value"])
+            h += timedelta(hours=1)
+    return out
+
+
+def c_to_f(c):
+    return c * 9 / 5 + 32
+
+
+def computed_feels_like(temp_f, wind_mph, humidity):
+    """NWS formulas: wind chill at 50 F or below with wind of 3 mph or more, heat index at 80 F or above,
+    otherwise the air temperature. Returns None if a needed input is missing."""
+    if temp_f is None:
+        return None
+    if temp_f <= 50:
+        if wind_mph is None:
+            return None
+        if wind_mph < 3:
+            return temp_f
+        v = wind_mph ** 0.16
+        return 35.74 + 0.6215 * temp_f - 35.75 * v + 0.4275 * temp_f * v
+    if temp_f >= 80:
+        if humidity is None:
+            return None
+        t, rh = temp_f, humidity
+        hi = 0.5 * (t + 61 + (t - 68) * 1.2 + rh * 0.094)
+        if (hi + t) / 2 < 80:
+            return hi
+        hi = (-42.379 + 2.04901523 * t + 10.14333127 * rh - 0.22475541 * t * rh - 0.00683783 * t * t
+              - 0.05481717 * rh * rh + 0.00122874 * t * t * rh + 0.00085282 * t * rh * rh - 0.00000199 * t * t * rh * rh)
+        if rh < 13 and 80 <= t <= 112:
+            hi -= ((13 - rh) / 4) * ((17 - abs(t - 95)) / 17) ** 0.5
+        elif rh > 85 and 80 <= t <= 87:
+            hi += ((rh - 85) / 10) * ((87 - t) / 5)
+        return hi
+    return temp_f
+
+
+def feels_like_hours(props):
+    """{hour start (UTC): feels-like in F}. Uses NWS's apparentTemperature; for hours where it's missing,
+    computes wind chill or heat index from temperature, wind speed and humidity."""
+    apparent = hourly(props, "apparentTemperature", {"wmoUnit:degC": c_to_f, "wmoUnit:degF": lambda v: v})
+    temp = hourly(props, "temperature", {"wmoUnit:degC": c_to_f, "wmoUnit:degF": lambda v: v})
+    wind = hourly(props, "windSpeed", {"wmoUnit:km_h-1": lambda v: v * 0.621371, "wmoUnit:m_s-1": lambda v: v * 2.236936,
+                                       "wmoUnit:mi_h-1": lambda v: v})
+    humidity = hourly(props, "relativeHumidity", {"wmoUnit:percent": lambda v: v})
+    out = dict(apparent)
+    for h in temp:
+        if h not in out:
+            value = computed_feels_like(temp[h], wind.get(h), humidity.get(h))
+            if value is not None:
+                out[h] = value
+    return out
+
+
+def average_feels_like(feels, start, end):
+    """Average feels-like (F) over the hours of one period, or None if no hour has a value."""
+    values = []
+    h = start
+    while h < end:
+        if h in feels:
+            values.append(feels[h])
+        h += timedelta(hours=1)
+    return round(sum(values) / len(values), 1) if values else None
+
+
 def day_bounds(day):
     """Start and end of a local calendar day, in UTC (23 or 25 hours long when clocks change)."""
     start = datetime(day.year, day.month, day.day, tzinfo=LOCAL)
@@ -144,6 +226,7 @@ def summarize(props, today):
     """The next DAYS local days, starting with `today`."""
     rain = layer(props, "quantitativePrecipitation", "in")
     chance = layer(props, "probabilityOfPrecipitation", "percent")
+    feels = feels_like_hours(props)
     window = (min(s for s, _, _ in rain), max(e for _, e, _ in rain)) if rain else None
     days = []
     for k in range(DAYS):
@@ -163,6 +246,7 @@ def summarize(props, today):
                 "start": s.astimezone(LOCAL).isoformat(timespec="minutes"),
                 "hours": round((e - s).total_seconds() / 3600, 2),
                 "rain_in": None if v is None else round(v, 4),
+                "apparent_temp_f": average_feels_like(feels, s, e),  # feels-like, averaged over the period
             } for s, e, v in mine],
         })
     return days

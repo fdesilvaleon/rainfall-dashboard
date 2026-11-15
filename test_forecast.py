@@ -86,6 +86,57 @@ class DaySummingTests(unittest.TestCase):
         self.assertEqual(len(days), 7)
 
 
+class FeelsLikeTests(unittest.TestCase):
+    """apparent_temp_f on each forecast period."""
+
+    BLOCK = "2026-11-15T12:00:00+00:00/PT6H"  # 4 AM - 10 AM Pacific (PST)
+
+    def periods(self, **layers):
+        props = grid([(self.BLOCK, 0)])["properties"]
+        for name, (uom, values) in layers.items():
+            props[name] = {"uom": uom, "values": [{"validTime": t, "value": v} for t, v in values]}
+        return forecast.summarize(props, date(2026, 11, 15))[0]["periods"]
+
+    def test_average_of_nws_apparent_temperature_in_fahrenheit(self):
+        # 10 C for 2 hours, 15 C for 4 hours -> (50*2 + 59*4) / 6 = 56 F
+        p = self.periods(apparentTemperature=("wmoUnit:degC", [("2026-11-15T12:00:00+00:00/PT2H", 10),
+                                                                ("2026-11-15T14:00:00+00:00/PT4H", 15)]))
+        self.assertEqual(p[0]["apparent_temp_f"], 56.0)
+
+    def test_falls_back_to_wind_chill_heat_index_or_air_temperature(self):
+        temp = ("wmoUnit:degC", [(self.BLOCK, (40 - 32) * 5 / 9)])           # 40 F
+        wind = ("wmoUnit:km_h-1", [(self.BLOCK, 10 / 0.621371)])              # 10 mph
+        rh = ("wmoUnit:percent", [(self.BLOCK, 50)])
+        p = self.periods(temperature=temp, windSpeed=wind, relativeHumidity=rh)
+        self.assertAlmostEqual(p[0]["apparent_temp_f"], 33.6, places=1)       # NWS wind chill for 40 F, 10 mph
+        p = self.periods(temperature=("wmoUnit:degC", [(self.BLOCK, (90 - 32) * 5 / 9)]), windSpeed=wind, relativeHumidity=rh)
+        self.assertAlmostEqual(p[0]["apparent_temp_f"], 94.6, places=1)       # NWS heat index for 90 F, 50%
+        p = self.periods(temperature=("wmoUnit:degC", [(self.BLOCK, (60 - 32) * 5 / 9)]), windSpeed=wind, relativeHumidity=rh)
+        self.assertAlmostEqual(p[0]["apparent_temp_f"], 60.0, places=1)       # in between: the air temperature
+
+    def test_nws_value_wins_and_gaps_are_filled(self):
+        p = self.periods(apparentTemperature=("wmoUnit:degC", [("2026-11-15T12:00:00+00:00/PT3H", 10)]),  # 50 F, 3 hours
+                         temperature=("wmoUnit:degC", [(self.BLOCK, 20)]),                                   # 68 F
+                         windSpeed=("wmoUnit:km_h-1", [(self.BLOCK, 5)]), relativeHumidity=("wmoUnit:percent", [(self.BLOCK, 50)]))
+        self.assertEqual(p[0]["apparent_temp_f"], 59.0)  # (50*3 + 68*3) / 6
+
+    def test_null_when_nothing_is_available(self):
+        self.assertIsNone(self.periods()[0]["apparent_temp_f"])
+        p = self.periods(temperature=("wmoUnit:degC", [(self.BLOCK, 2)]))  # cold, but no wind to compute wind chill
+        self.assertIsNone(p[0]["apparent_temp_f"])
+
+    def test_forecast_history_is_not_affected(self):
+        import forecast_history as fh
+        fc = {"gauges": {"6121": {"nws_updated": "2026-11-15T10:00:00+00:00",
+                                  "days": [{"date": "2026-11-15", "rain_in": 0.1, "complete": True, "chance_max_pct": 40,
+                                            "periods": [{"start": "2026-11-15T04:00-08:00", "hours": 6, "rain_in": 0.1}]}]}}}
+        with_field = json.loads(json.dumps(fc))
+        with_field["gauges"]["6121"]["days"][0]["periods"][0]["apparent_temp_f"] = 52.3
+        when = datetime(2026, 11, 15, 7, tzinfo=forecast.LOCAL)
+        self.assertEqual(fh.rows_for(with_field, when), fh.rows_for(fc, when))
+        self.assertEqual(list(fh.rows_for(with_field, when)[0]), fh.FIELDS)
+
+
 class StepTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
