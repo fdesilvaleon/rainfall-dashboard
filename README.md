@@ -159,7 +159,14 @@ For each gauge:
   - `chance_max_pct`: the highest chance of rain (%) among the forecast periods
     that overlap the day. A chance of rain can come with 0.00 in expected, when
     only a trace is likely.
-  - `periods`: the forecast periods counted for that day, as NWS gave them.
+  - `periods`: the forecast periods counted for that day, as NWS gave them:
+    `start`, `hours`, `rain_in`, and `apparent_temp_f`, the average "feels like"
+    temperature over the period's hours in °F. It comes from NWS's
+    `apparentTemperature` (converted from °C). For any hour where that's missing,
+    it's computed from temperature, wind speed and humidity with the standard NWS
+    formulas (wind chill at 50°F or below with wind of at least 3 mph, heat index
+    at 80°F or above, otherwise the air temperature). It's `null` if neither is
+    possible.
 
 Top level: `fetched_at` (the last time a new forecast was fetched),
 `checked_at` (the last time NWS was checked successfully, updated every hourly
@@ -253,6 +260,34 @@ history file every run (and only rewritten when its contents change), so it
 should never be edited by hand. It stays small (a few hundred KB) for the
 dashboard to read. If it can't be written, the problem is logged and the run
 carries on.
+
+## Trail conditions (on the dashboard)
+
+A rough running and biking guide from the **average of all gauges**, for today
+(two cards) and the next 2 days (a table), in three time blocks: morning 4-10 AM,
+mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Each block gets the
+**worse** of three checks:
+
+- **Ground wetness:** rain in the 24 hours before the block + 1/2 of the rain
+  24-48 hours before + 1/4 of the rain 48-72 hours before. Measured hourly rain
+  is used up to the latest measured hour, then the forecast (each 6-hour forecast
+  period spread evenly). Only gauges with data for all 72 hours are averaged.
+  Running: under 0.02 in optimal, under 0.10 good, under 0.30 fair, otherwise
+  poor. Biking: under 0.02, 0.05 and 0.15.
+- **Rain during the block** (forecast): under 0.01 in optimal; 0.01-0.05 good for
+  running, fair for biking; more than 0.05 poor.
+- **Comfort**, from the forecast feels-like temperature (`apparent_temp_f`): running
+  optimal 45-68°F, good 38-45/68-78, fair 30-38/78-88, poor outside; biking
+  optimal 50-72°F, good 42-50/72-82, fair 34-42/82-92, poor outside. At an exact
+  boundary the better rating applies.
+
+Values are compared as shown on the page (inches to 2 decimals, whole degrees).
+Today's big rating is the worst of the blocks still ahead; if all have ended,
+the afternoon block's ground wetness alone. If the forecast is missing or out of
+date, only the ground wetness measured so far is used; if `apparent_temp_f`
+isn't there yet, the comfort check is skipped. **All the numbers live in one
+commented block, `TRAIL`, near the top of the trail-conditions part of the
+script in `index.html`**, so they can be tuned in one place.
 
 ## Attribution and disclaimer
 

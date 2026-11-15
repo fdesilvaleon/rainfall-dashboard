@@ -33,6 +33,11 @@
     --shade-measured: rgba(82, 81, 78, 0.06);   /* "Last 7 days and next 7 days": background of the measured side */
     --shade-forecast: rgba(42, 120, 214, 0.07); /* ... and of the forecast side */
     --bar: #8a8984;  /* one neutral color for the % of normal bars */
+    /* Trail conditions ratings */
+    --r0-bg: #1b6e46; --r0-fg: #ffffff;   /* Optimal */
+    --r1-bg: #cfe6d3; --r1-fg: #16301f;   /* Good */
+    --r2-bg: #f4d98c; --r2-fg: #3a2a00;   /* Fair */
+    --r3-bg: #b5402d; --r3-fg: #ffffff;   /* Poor */
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -58,6 +63,10 @@
       --shade-measured: rgba(240, 239, 236, 0.05);
       --shade-forecast: rgba(85, 152, 231, 0.11);
       --bar: #7d7c76;
+      --r0-bg: #2a7f53; --r0-fg: #ffffff;
+      --r1-bg: #2f5a3d; --r1-fg: #e1f1e5;
+      --r2-bg: #75601f; --r2-fg: #fff3d1;
+      --r3-bg: #a8432f; --r3-fg: #ffffff;
     }
   }
 
@@ -95,6 +104,42 @@
     margin: 0 0 16px;
   }
   .error[hidden], .note[hidden] { display: none; }
+  /* Trail conditions */
+  .trail-today { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .trail-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface); }
+  .trail-card h3 { margin: 0 0 8px; font-size: 1rem; }
+  .trail-card h3 span { color: var(--text-2); font-weight: 400; }
+  .r0 { background: var(--r0-bg); color: var(--r0-fg); }
+  .r1 { background: var(--r1-bg); color: var(--r1-fg); }
+  .r2 { background: var(--r2-bg); color: var(--r2-fg); }
+  .r3 { background: var(--r3-bg); color: var(--r3-fg); }
+  .rnone { background: var(--tile-bg); color: var(--muted); }
+  .rating-big { display: flex; align-items: center; justify-content: space-between; border-radius: 8px; padding: 10px 14px;
+                font-size: 1.4rem; font-weight: 700; }
+  .squares { display: inline-flex; gap: 3px; }
+  .squares i { width: 10px; height: 10px; border: 1.5px solid currentColor; border-radius: 2px; display: block; }
+  .squares i.on { background: currentColor; }
+  .trail-reason { margin: 8px 0 10px; color: var(--text-2); font-size: 0.92rem; }
+  .blocks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .block { border-radius: 8px; padding: 6px 8px; font-size: 0.82rem; line-height: 1.35; }
+  .block b { display: block; font-size: 0.9rem; }
+  .block .when { opacity: 0.85; }
+  .block.past { background: var(--tile-bg); color: var(--muted); }
+  .trail-next { margin-top: 12px; }
+  .trail-next h3 { margin: 0 0 8px; font-size: 1rem; }
+  .trail-table { width: 100%; border-collapse: separate; border-spacing: 4px; font-size: 0.85rem; }
+  .trail-table th { font-weight: 600; color: var(--text-2); text-align: center; padding: 2px; }
+  .trail-table th.group { color: var(--text); border-bottom: 1px solid var(--border); }
+  .trail-table td.day { text-align: left; padding-right: 8px; white-space: nowrap; }
+  .trail-table td.day small { display: block; color: var(--text-2); }
+  .cell { border-radius: 6px; padding: 5px 4px; text-align: center; font-weight: 600; font-size: 0.8rem; }
+  .trail-mobile { display: none; }
+  .trail-mobile .labels, .trail-mobile .row { display: grid; grid-template-columns: 64px repeat(3, 1fr); gap: 4px; align-items: center; margin-top: 4px; }
+  .trail-mobile .labels span { text-align: center; color: var(--text-2); font-size: 0.78rem; font-weight: 600; }
+  .trail-mobile .daytitle { margin: 10px 0 2px; font-weight: 600; font-size: 0.9rem; }
+  .trail-mobile .daytitle small { color: var(--text-2); font-weight: 400; }
+  .trail-mobile .row > span:first-child { font-size: 0.8rem; color: var(--text-2); }
+  #trail-notes p { margin: 8px 0 0; }
   .note {
     margin: 10px 0 0;
     padding: 8px 12px;
@@ -213,6 +258,9 @@
   footer p { margin: 0 0 8px; }
 
   @media (max-width: 600px) {
+    .trail-today { grid-template-columns: 1fr; }
+    .trail-table { display: none; }
+    .trail-mobile { display: block; }
     h1 { font-size: 1.35rem; }
     #map { height: 480px; }  /* tall enough to spread the gauges out for their labels */
     .chart-box { height: 260px; }
@@ -242,6 +290,14 @@
     <h2>Rain gauge locations</h2>
     <p class="sub">Tap a gauge for its season so far.</p>
     <div id="map"></div>
+  </section>
+
+  <section class="card" id="trail">
+    <h2>Trail conditions</h2>
+    <p class="sub">Running and biking, from the last 3 days of rain and the next few days of forecast.</p>
+    <div id="trail-today" class="trail-today"></div>
+    <div id="trail-next" class="trail-card trail-next"></div>
+    <div id="trail-notes" class="footnote"></div>
   </section>
 
   <section class="card">
@@ -313,6 +369,19 @@
       <dd>Rain in the previous water year from Oct 1 through the same calendar date.</dd>
       <dt>% of average season</dt>
       <dd>Season to date as a share of the average total for a whole water year.</dd>
+      <dt>Trail conditions</dt>
+      <dd>A rough guide for running and biking (gravel included), from the average of all gauges. Each time block
+        (morning 4-10 AM, mid day 10 AM-4 PM, afternoon 4-10 PM, Pacific time) gets the worse of three checks.
+        <b>Ground wetness:</b> rain in the 24 hours before the block, plus half of the rain 24-48 hours before, plus a
+        quarter of the rain 48-72 hours before (measured rain, then forecast rain for hours not measured yet). Running:
+        under 0.02 in optimal, under 0.10 good, under 0.30 fair, otherwise poor. Biking is stricter: under 0.02 optimal,
+        under 0.05 good, under 0.15 fair, otherwise poor. Only gauges with data for all 72 hours are averaged (the number
+        used shows when you hover over or tap a rating). <b>Rain during the block</b> (forecast): under 0.01 in optimal;
+        0.01-0.05 in good for running and fair for biking; more than 0.05 in poor. <b>Comfort</b>, from the forecast
+        "feels like" temperature (which already includes wind chill and heat index): running optimal 45-68°F, good
+        38-45 or 68-78, fair 30-38 or 78-88, poor outside that; biking optimal 50-72°F, good 42-50 or 72-82, fair 34-42
+        or 82-92, poor outside that. At an exact boundary the better rating applies. Today's big rating is the worst
+        of the blocks still ahead; blocks that have ended are marked "Past".</dd>
       <dt>Last 7 days and next 7 days</dt>
       <dd>Solid bars: rain measured by the gauge on each of the last 7 days, added up from the hourly data, midnight to
         midnight in PST (the district's time). Striped bars: the National Weather Service's expected rain for the 2.5 km area
@@ -1576,6 +1645,307 @@ function renderForecastChart() {
   });
 }
 
+// ---------- trail conditions ----------
+
+// ======== Trail conditions: all the numbers that decide the ratings (tune them here) ========
+const TRAIL = {
+  RATINGS: ["Optimal", "Good", "Fair", "Poor"],  // best to worst; ratings are stored as 0-3
+  BLOCKS: [                                       // Pacific local clock hours
+    { name: "Morning", start: 4, end: 10, label: "4-10 AM", when: "morning" },
+    { name: "Mid day", start: 10, end: 16, label: "10 AM-4 PM", when: "mid day" },
+    { name: "Afternoon", start: 16, end: 22, label: "4-10 PM", when: "afternoon" },
+  ],
+  NEXT_DAYS: 2,
+  // A. Ground wetness = rain 0-24 h before the block + 1/2 x rain 24-48 h before + 1/4 x rain 48-72 h before.
+  WETNESS_WEIGHTS: [1, 0.5, 0.25],
+  // Limits in inches: under the 1st = Optimal, under the 2nd = Good, under the 3rd = Fair, otherwise Poor.
+  WETNESS: { running: [0.02, 0.10, 0.30], biking: [0.02, 0.05, 0.15] },
+  // B. Forecast rain during the block (inches): under OPTIMAL_BELOW = Optimal; up to POOR_ABOVE = MIDDLE rating; above = Poor.
+  BLOCK_RAIN: { OPTIMAL_BELOW: 0.01, POOR_ABOVE: 0.05, MIDDLE: { running: 1, biking: 2 } },
+  // C. Comfort from the forecast feels-like temperature (F). Ranges are inclusive: at a boundary the better rating applies.
+  COMFORT: {
+    running: { optimal: [45, 68], good: [38, 78], fair: [30, 88] },
+    biking: { optimal: [50, 72], good: [42, 82], fair: [34, 92] },
+  },
+};
+// ==============================================================================================
+
+const SPORTS = [["running", "Running"], ["biking", "Biking (incl. gravel)"]];
+
+// The three checks. Values are compared as shown on the page (inches to 2 decimals, whole degrees).
+function rateWetness(sport, inches) {
+  const v = Math.round(inches * 100) / 100, t = TRAIL.WETNESS[sport];
+  return v < t[0] ? 0 : v < t[1] ? 1 : v < t[2] ? 2 : 3;
+}
+function rateBlockRain(sport, inches) {
+  const v = Math.round(inches * 100) / 100, b = TRAIL.BLOCK_RAIN;
+  return v < b.OPTIMAL_BELOW ? 0 : v <= b.POOR_ABOVE ? b.MIDDLE[sport] : 3;
+}
+function rateComfort(sport, feelsF) {
+  const v = Math.round(feelsF), c = TRAIL.COMFORT[sport];
+  const within = ([lo, hi]) => v >= lo && v <= hi;
+  return within(c.optimal) ? 0 : within(c.good) ? 1 : within(c.fair) ? 2 : 3;
+}
+
+function pacificHour(dateStr, hour) {  // the page's PST hour number for a Pacific local date and clock hour
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const fmt = new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", hourCycle: "h23" });
+  for (const offset of [8, 7]) {
+    const ms = Date.UTC(y, m - 1, d, hour + offset);
+    if (Number(fmt.format(new Date(ms))) === hour) return ms / HOUR_MS - 8;
+  }
+  return Date.UTC(y, m - 1, d, hour + 8) / HOUR_MS - 8;
+}
+function addDays(dateStr, n) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+function dayTitle(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return `${WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]}, ${MONTHS[m - 1]} ${d}`;
+}
+
+// Is the forecast fresh enough to use? The same limits as the chart's notes.
+function forecastUsable() {
+  const f = state.forecast;
+  if (!f || !f.gauges || !Object.keys(f.gauges).length) return false;
+  const age = iso => Date.now() - Date.parse(iso);
+  if (f.checked_at) return !f.last_error && age(f.checked_at) <= CHECK_STALE_HOURS * HOUR_MS;
+  return Object.values(f.gauges).every(g => g.fetched_at && age(g.fetched_at) <= FORECAST_STALE_HOURS * HOUR_MS);
+}
+
+// One gauge's forecast periods as page hour numbers: [{start, end, rain, feels}].
+function forecastPeriods(id) {
+  const entry = state.forecast && state.forecast.gauges && state.forecast.gauges[id];
+  const out = [];
+  for (const d of (entry && entry.days) || []) {
+    for (const p of d.periods || []) {
+      const start = Date.parse(p.start) / HOUR_MS - 8;
+      out.push({ start, end: start + p.hours, rain: p.rain_in, feels: p.apparent_temp_f });
+    }
+  }
+  return out;
+}
+
+// The inputs for one block, averaged over gauges. useForecast=false: ground wetness only, as measured so far.
+function blockInputs(startH, endH, useForecast) {
+  const wet = [], rain = [], feels = [];
+  for (const g of state.gauges.filter(x => x.ok)) {
+    const periods = useForecast ? forecastPeriods(g.id) : [];
+    const anchor = useForecast ? startH : Math.min(startH, g.last + 1);
+    const hourRain = h => {
+      if (h <= g.last) { const r = g.byHour.get(h); return r && r.rain != null ? r.rain : null; }
+      const p = periods.find(q => q.start <= h && h < q.end);
+      return p && p.rain != null ? p.rain / (p.end - p.start) : null;  // forecast spread evenly over its period
+    };
+    const windows = [0, 0, 0];
+    let complete = true;
+    for (let k = 0; k < 3 && complete; k++) {
+      for (let h = anchor - 24 * (k + 1); h < anchor - 24 * k; h++) {
+        const v = hourRain(h);
+        if (v == null) { complete = false; break; }
+        windows[k] += v;
+      }
+    }
+    if (complete) wet.push(windows);
+    if (!useForecast) continue;
+    // Forecast rain and feels-like during the block, from the periods that overlap it.
+    let r = 0, covered = 0, rainOk = true, fSum = 0, fHours = 0;
+    for (const p of periods) {
+      const o = Math.min(endH, p.end) - Math.max(startH, p.start);
+      if (o <= 0) continue;
+      covered += o;
+      if (p.rain == null) rainOk = false; else r += p.rain * o / (p.end - p.start);
+      if (p.feels != null) { fSum += p.feels * o; fHours += o; }
+    }
+    if (rainOk && covered >= endH - startH - 1e-6) rain.push(r);
+    if (fHours) feels.push(fSum / fHours);
+  }
+  const avg = a => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : null);
+  const win = [0, 1, 2].map(k => avg(wet.map(w => w[k])));
+  return {
+    wetness: wet.length ? TRAIL.WETNESS_WEIGHTS.reduce((s, w, k) => s + w * win[k], 0) : null,
+    windows: win, wetGauges: wet.length,
+    rain: avg(rain), rainGauges: rain.length,
+    feels: avg(feels), feelsGauges: feels.length,
+  };
+}
+
+// Ratings for one block and sport: each check (null when it can't be made) and the worst of them.
+function blockRating(inputs, sport) {
+  const checks = {
+    rain: inputs.rain == null ? null : rateBlockRain(sport, inputs.rain),
+    wetness: inputs.wetness == null ? null : rateWetness(sport, inputs.wetness),
+    comfort: inputs.feels == null ? null : rateComfort(sport, inputs.feels),
+  };
+  const known = Object.values(checks).filter(v => v != null);
+  return { checks, rating: inputs.wetness == null ? null : Math.max(...known) };
+}
+
+function ratingBox(rating, cls = "") {
+  const box = el("div", null, `${cls} ${rating == null ? "rnone" : "r" + rating}`);
+  return box;
+}
+
+function squares(rating) {
+  const s = el("span", null, "squares");
+  s.setAttribute("aria-hidden", "true");
+  for (let k = 0; k < 4; k++) s.appendChild(el("i", null, k < 4 - rating ? "on" : ""));
+  return s;
+}
+
+function inputsText(inp) {
+  const parts = [];
+  if (inp.wetness != null) parts.push(`ground ${inp.wetness.toFixed(2)} in (${inp.wetGauges} gauges)`);
+  if (inp.rain != null) parts.push(`rain ${inp.rain.toFixed(2)} in`);
+  if (inp.feels != null) parts.push(`feels like ${Math.round(inp.feels)}°F`);
+  return parts.join(" · ");
+}
+
+// The one-line reason: the check that limits the rating (rain, then ground, then comfort on a tie).
+function reasonLine(sport, block, inp, r, futureRainAll) {
+  const when = block.dayLabel ? `${block.dayLabel} ${block.when}` : `this ${block.when}`.replace("this mid day", "around mid day");
+  if (r.rating === 0) {
+    const dry = `Ground is dry: ${inp.wetness.toFixed(2)} in over the last 3 days`;
+    return futureRainAll === 0 ? `${dry}, no rain forecast.` : `${dry}.`;
+  }
+  const c = r.checks;
+  if (c.rain === r.rating) return `Rain expected ${when} (${inp.rain.toFixed(2)} in).`;
+  if (c.wetness === r.rating) return `Wet ground: ${inp.wetness.toFixed(2)} in over the last 3 days.`;
+  const f = Math.round(inp.feels);
+  return `${f < TRAIL.COMFORT[sport].optimal[0] ? "Cold" : "Hot"}: feels like ${f}°F ${when}.`;
+}
+
+function renderTrail() {
+  const next = document.getElementById("trail-next"), notes = document.getElementById("trail-notes");
+  const todayBox = document.getElementById("trail-today");
+  todayBox.textContent = ""; next.textContent = ""; notes.textContent = "";
+  const note = text => notes.appendChild(el("p", text));
+  if (!state.gauges.some(g => g.ok)) {
+    todayBox.appendChild(el("p", "Trail conditions need the hourly rain data, which couldn't be loaded right now.", "message"));
+    next.hidden = true;
+    return;
+  }
+  const useForecast = forecastUsable();
+  const nowH = Date.now() / HOUR_MS - 8;
+  const date0 = pacificToday();
+  const days = [0, 1, 2].map(k => addDays(date0, k));
+  // Inputs for every block of today and the next 2 days.
+  const grid = days.map((d, k) => TRAIL.BLOCKS.map(b => {
+    const startH = pacificHour(d, b.start), endH = pacificHour(d, b.end);
+    return { ...b, date: d, startH, endH, past: k === 0 && nowH >= endH, inputs: blockInputs(startH, endH, useForecast),
+             dayLabel: k === 0 ? "" : k === 1 ? "tomorrow" : dayTitle(d).split(",")[0] };
+  }));
+  state.trail = { grid, useForecast };  // kept for checking by hand
+  let anyFeels = false;
+  grid.flat().forEach(b => { if (b.inputs.feels != null) anyFeels = true; });
+
+  // Today: one card per sport.
+  for (const [sport, sportName] of SPORTS) {
+    const blocks = grid[0];
+    const rated = blocks.map(b => ({ b, r: blockRating(b.inputs, sport) }));
+    const ahead = rated.filter(x => !x.b.past && x.r.rating != null);
+    let big, reason, gaugesUsed;
+    if (ahead.length) {
+      const worst = ahead.reduce((a, x) => (x.r.rating > a.r.rating ? x : a));
+      big = worst.r.rating;
+      const futureRain = ahead.every(x => x.b.inputs.rain != null) ? (ahead.some(x => rateBlockRain(sport, x.b.inputs.rain) > 0) ? 1 : 0) : null;
+      reason = reasonLine(sport, worst.b, worst.b.inputs, worst.r, futureRain);
+      gaugesUsed = worst.b.inputs.wetGauges;
+    } else {
+      const evening = blocks[blocks.length - 1].inputs;
+      big = evening.wetness == null ? null : rateWetness(sport, evening.wetness);
+      reason = big == null ? "Not enough data for a rating." :
+        `Today's blocks have ended; rated on ground wetness: ${evening.wetness.toFixed(2)} in over the last 3 days.`;
+      gaugesUsed = evening.wetGauges;
+    }
+    const card = el("div", null, "trail-card");
+    const h = el("h3", sportName + " ");
+    h.appendChild(el("span", dayTitle(date0)));
+    card.appendChild(h);
+    const bigBox = ratingBox(big, "rating-big");
+    bigBox.appendChild(el("span", big == null ? "No rating" : TRAIL.RATINGS[big]));
+    if (big != null) bigBox.appendChild(squares(big));
+    bigBox.title = `Average of ${gaugesUsed} gauges`;
+    card.appendChild(bigBox);
+    card.appendChild(el("p", reason, "trail-reason"));
+    const cells = el("div", null, "blocks");
+    for (const { b, r } of rated) {
+      const cell = b.past ? el("div", null, "block past") : ratingBox(r.rating, "block");
+      cell.appendChild(el("b", b.name));
+      cell.appendChild(el("div", b.past ? "Past" : r.rating == null ? "No rating" : TRAIL.RATINGS[r.rating]));
+      cell.appendChild(el("div", b.label, "when"));
+      if (b.inputs.feels != null) cell.appendChild(el("div", `feels like ${Math.round(b.inputs.feels)}°F`, "when"));
+      cell.title = inputsText(b.inputs);
+      cells.appendChild(cell);
+    }
+    card.appendChild(cells);
+    todayBox.appendChild(card);
+  }
+
+  // Next 2 days: a table (desktop) and a stacked layout (phones).
+  next.hidden = false;
+  next.appendChild(el("h3", "Next 2 days"));
+  if (!useForecast) {
+    next.appendChild(el("p", "The forecast isn't available right now, so there are no ratings for the next 2 days.", "message"));
+  } else {
+    const dayRain = d => {
+      const vals = [], chances = [];
+      for (const entry of Object.values(state.forecast.gauges)) {
+        const x = (entry.days || []).find(y => y.date === d);
+        if (x && x.rain_in != null) vals.push(x.rain_in);
+        if (x && x.chance_max_pct != null) chances.push(x.chance_max_pct);
+      }
+      const avg = a => a.reduce((s, v) => s + v, 0) / a.length;
+      return `${vals.length ? avg(vals).toFixed(2) + " in" : "– in"} · ${chances.length ? Math.round(avg(chances)) + "% chance" : "chance unknown"}`;
+    };
+    const cell = (b, sport, tag) => {
+      const r = blockRating(b.inputs, sport);
+      const c = ratingBox(r.rating, "cell");
+      if (tag === "td") { const td = el("td"); td.appendChild(c); c.textContent = r.rating == null ? "–" : TRAIL.RATINGS[r.rating]; td.title = inputsText(b.inputs); return td; }
+      c.textContent = r.rating == null ? "–" : TRAIL.RATINGS[r.rating];
+      c.title = inputsText(b.inputs);
+      return c;
+    };
+    const table = el("table", null, "trail-table");
+    const head1 = el("tr"), head2 = el("tr");
+    head1.append(el("th"), el("th", "Running", "group"), el("th", "Biking (incl. gravel)", "group"));
+    head1.children[1].colSpan = 3; head1.children[2].colSpan = 3;
+    head2.appendChild(el("th"));
+    for (let k = 0; k < 2; k++) TRAIL.BLOCKS.forEach(b => head2.appendChild(el("th", b.name)));
+    const thead = el("thead"); thead.append(head1, head2);
+    const tbody = el("tbody");
+    const mobile = el("div", null, "trail-mobile");
+    const labels = el("div", null, "labels");
+    labels.appendChild(el("span"));
+    TRAIL.BLOCKS.forEach(b => labels.appendChild(el("span", b.name)));
+    mobile.appendChild(labels);
+    for (let k = 1; k <= TRAIL.NEXT_DAYS; k++) {
+      const tr = el("tr");
+      const day = el("td", null, "day");
+      day.append(document.createTextNode(dayTitle(days[k])), el("small", dayRain(days[k])));
+      tr.appendChild(day);
+      for (const [sport] of SPORTS) grid[k].forEach(b => tr.appendChild(cell(b, sport, "td")));
+      tbody.appendChild(tr);
+      const title = el("div", dayTitle(days[k]) + " ", "daytitle");
+      title.appendChild(el("small", dayRain(days[k])));
+      mobile.appendChild(title);
+      for (const [sport, sportName] of SPORTS) {
+        const row = el("div", null, "row");
+        row.appendChild(el("span", sport === "running" ? "Running" : "Biking"));
+        grid[k].forEach(b => row.appendChild(cell(b, sport, "div")));
+        mobile.appendChild(row);
+      }
+    }
+    table.append(thead, tbody);
+    next.append(table, mobile);
+  }
+
+  if (!useForecast) note("The forecast isn't available right now, so ratings use the ground wetness measured so far only.");
+  else if (!anyFeels) note("Temperature isn't available yet, so ratings use ground wetness and rain only.");
+  note("Estimate from the average of all gauges. Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.");
+}
+
 // ---------- controls ----------
 
 function renderSelected() {
@@ -1623,6 +1993,7 @@ async function main() {
     return;
   }
   renderHeader();
+  try { renderTrail(); } catch (e) { console.error(e); }
   setupControls();
   try { renderMap(); } catch (e) {
     console.error(e);
