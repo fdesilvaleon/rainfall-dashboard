@@ -274,6 +274,15 @@ mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Each block gets the
   period spread evenly). Only gauges with data for all 72 hours are averaged.
   Running: under 0.1 in optimal, under 0.50 good, under 1.00 fair, otherwise
   poor. Biking: under 0.02, 0.05 and 0.15.
+  **Season adjustment:** early in the water year the soil is dry and absorbs the
+  first storms, so the same wetness gives less mud than in mid-winter. The limits
+  are multiplied according to the season rain total, the average across gauges
+  of rain since Oct 1 (the dashboard's "Season to date" numbers, from the hourly
+  files). Starting values: under 2.0 in, biking x 2.5; 2.0 to under 5.0 in,
+  biking x 1.5; 5.0 in or more, x 1.0 (the base limits). Running is x 1.0 at
+  every step for now. If the season total can't be determined, the multiplier is
+  1.0. When a sport is adjusted, a line under the Trail conditions section says
+  so. The steps are `SEASON_ADJUST` in the same `TRAIL` block.
 - **Rain during the block** (forecast): under 0.01 in optimal; 0.01-0.15 good for
     running, fair for biking; more than 0.15 poor.
 - **Comfort**, from the forecast feels-like temperature (`apparent_temp_f`): running

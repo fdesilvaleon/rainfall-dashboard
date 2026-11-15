@@ -376,7 +376,11 @@
         quarter of the rain 48-72 hours before (measured rain, then forecast rain for hours not measured yet). Running:
         under 0.10 in optimal, under 0.50 good, under 1.00 fair, otherwise poor. Biking is stricter: under 0.02 optimal,
         under 0.05 good, under 0.15 fair, otherwise poor. Only gauges with data for all 72 hours are averaged (the number
-        used shows when you hover over or tap a rating). <b>Rain during the block</b> (forecast): under 0.01 in optimal;
+        used shows when you hover over or tap a rating). <b>Season adjustment:</b> early in the water year the dry soil
+        absorbs the first storms, so the ground-wetness limits are multiplied while the season has been dry. The season
+        total is the average of all gauges' rain since Oct 1; under 2.0 in, biking's limits are 2.5 times the above;
+        2.0 to under 5.0 in, 1.5 times; 5.0 in or more, the limits above. Running isn't adjusted (1.0 at every step).
+        If the season total isn't known, no adjustment is made. A line under the section says when it applies. <b>Rain during the block</b> (forecast): under 0.01 in optimal;
         0.01-0.15 in good for running and fair for biking; more than 0.15 in poor. <b>Comfort</b>, from the forecast
         "feels like" temperature (which already includes wind chill and heat index): running optimal 45-68°F, good
         38-45 or 68-78, fair 30-38 or 78-88, poor outside that; biking optimal 50-72°F, good 42-50 or 72-82, fair 34-42
@@ -1660,6 +1664,15 @@ const TRAIL = {
   WETNESS_WEIGHTS: [1, 0.5, 0.25],
   // Limits in inches: under the 1st = Optimal, under the 2nd = Good, under the 3rd = Fair, otherwise Poor.
   WETNESS: { running: [0.10, 0.50, 1.00], biking: [0.02, 0.05, 0.15] },
+  // Season adjustment of the WETNESS limits: early in the water year the dry soil absorbs the first storms,
+  // so the limits are multiplied while the season has been dry. The season total is the average, across the
+  // gauges with data, of rain since Oct 1 (the "Season to date" numbers). The first step whose BELOW is
+  // greater than the season total applies. If the season total isn't known, the multiplier is 1.
+  SEASON_ADJUST: [
+    { BELOW: 2.0, running: 1.0, biking: 2.5 },       // under 2.0 in
+    { BELOW: 5.0, running: 1.0, biking: 1.5 },       // 2.0 to under 5.0 in
+    { BELOW: Infinity, running: 1.0, biking: 1.0 },  // 5.0 in or more: the base limits
+  ],
   // B. Forecast rain during the block (inches): under OPTIMAL_BELOW = Optimal; up to POOR_ABOVE = MIDDLE rating; above = Poor.
   BLOCK_RAIN: { OPTIMAL_BELOW: 0.01, POOR_ABOVE: 0.15, MIDDLE: { running: 1, biking: 2 } },
   // C. Comfort from the forecast feels-like temperature (F). Ranges are inclusive: at a boundary the better rating applies.
@@ -1673,9 +1686,27 @@ const TRAIL = {
 const SPORTS = [["running", "Running"], ["biking", "Biking"]];
 
 // The three checks. Values are compared as shown on the page (inches to 2 decimals, whole degrees).
-function rateWetness(sport, inches) {
-  const v = Math.round(inches * 100) / 100, t = TRAIL.WETNESS[sport];
+function rateWetness(sport, inches, multiplier = 1) {
+  // The base limits times the season multiplier (rounded to remove floating-point noise).
+  const v = Math.round(inches * 100) / 100, t = TRAIL.WETNESS[sport].map(x => Math.round(x * multiplier * 1e4) / 1e4);
   return v < t[0] ? 0 : v < t[1] ? 1 : v < t[2] ? 2 : 3;
+}
+
+// The season total (average of the gauges' rain since Oct 1, as shown on the page) and each sport's multiplier.
+function seasonAdjustment(totalOverride) {
+  let total = totalOverride;
+  let gauges = null;
+  if (total === undefined) {
+    const values = state.gauges.filter(g => g.ok).map(g => seasonTotal(g).value).filter(v => v != null);
+    gauges = values.length;
+    total = values.length ? Math.round(values.reduce((a, v) => a + v, 0) / values.length * 100) / 100 : null;
+  }
+  const multiplier = { running: 1, biking: 1 };
+  if (total != null) {
+    const step = TRAIL.SEASON_ADJUST.find(x => total < x.BELOW);
+    for (const sport of Object.keys(multiplier)) multiplier[sport] = step[sport];
+  }
+  return { total, gauges, multiplier };
 }
 function rateBlockRain(sport, inches) {
   const v = Math.round(inches * 100) / 100, b = TRAIL.BLOCK_RAIN;
@@ -1772,10 +1803,10 @@ function blockInputs(startH, endH, useForecast) {
 }
 
 // Ratings for one block and sport: each check (null when it can't be made) and the worst of them.
-function blockRating(inputs, sport) {
+function blockRating(inputs, sport, multiplier = 1) {
   const checks = {
     rain: inputs.rain == null ? null : rateBlockRain(sport, inputs.rain),
-    wetness: inputs.wetness == null ? null : rateWetness(sport, inputs.wetness),
+    wetness: inputs.wetness == null ? null : rateWetness(sport, inputs.wetness, multiplier),
     comfort: inputs.feels == null ? null : rateComfort(sport, inputs.feels),
   };
   const known = Object.values(checks).filter(v => v != null);
@@ -1836,14 +1867,16 @@ function renderTrail() {
     return { ...b, date: d, startH, endH, past: k === 0 && nowH >= endH, inputs: blockInputs(startH, endH, useForecast),
              dayLabel: k === 0 ? "" : k === 1 ? "tomorrow" : dayTitle(d).split(",")[0] };
   }));
-  state.trail = { grid, useForecast };  // kept for checking by hand
+  const season = seasonAdjustment();
+  const mult = season.multiplier;
+  state.trail = { grid, useForecast, season };  // kept for checking by hand
   let anyFeels = false;
   grid.flat().forEach(b => { if (b.inputs.feels != null) anyFeels = true; });
 
   // Today: one card per sport.
   for (const [sport, sportName] of SPORTS) {
     const blocks = grid[0];
-    const rated = blocks.map(b => ({ b, r: blockRating(b.inputs, sport) }));
+    const rated = blocks.map(b => ({ b, r: blockRating(b.inputs, sport, mult[sport]) }));
     const ahead = rated.filter(x => !x.b.past && x.r.rating != null);
     let big, reason, gaugesUsed;
     if (ahead.length) {
@@ -1854,7 +1887,7 @@ function renderTrail() {
       gaugesUsed = worst.b.inputs.wetGauges;
     } else {
       const evening = blocks[blocks.length - 1].inputs;
-      big = evening.wetness == null ? null : rateWetness(sport, evening.wetness);
+      big = evening.wetness == null ? null : rateWetness(sport, evening.wetness, mult[sport]);
       reason = big == null ? "Not enough data for a rating." :
         `Today's blocks have ended; rated on ground wetness: ${evening.wetness.toFixed(2)} in over the last 3 days.`;
       gaugesUsed = evening.wetGauges;
@@ -1900,7 +1933,7 @@ function renderTrail() {
       return `${vals.length ? avg(vals).toFixed(2) + " in" : "– in"} · ${chances.length ? Math.round(avg(chances)) + "% chance" : "chance unknown"}`;
     };
     const cell = (b, sport, tag) => {
-      const r = blockRating(b.inputs, sport);
+      const r = blockRating(b.inputs, sport, mult[sport]);
       const c = ratingBox(r.rating, "cell");
       if (tag === "td") { const td = el("td"); td.appendChild(c); c.textContent = r.rating == null ? "–" : TRAIL.RATINGS[r.rating]; td.title = inputsText(b.inputs); return td; }
       c.textContent = r.rating == null ? "–" : TRAIL.RATINGS[r.rating];
@@ -1941,6 +1974,16 @@ function renderTrail() {
     next.append(table, mobile);
   }
 
+  // One line per adjusted sport (multiplier above 1).
+  for (const [sport, sportName] of SPORTS) {
+    if (mult[sport] > 1) {
+      // About 0.9 in; 2 decimals when rounding to 1 would reach the next step (1.99 shouldn't read as 2.0).
+      const step = TRAIL.SEASON_ADJUST.find(x => season.total < x.BELOW);
+      const about = Number(season.total.toFixed(1)) >= step.BELOW ? season.total.toFixed(2) : season.total.toFixed(1);
+      note(`Early-season adjustment for ${sportName.toLowerCase()}: the soil is still dry (about ${about} in of rain this season), ` +
+           `so the ground-wetness limits are ${mult[sport]} times the usual.`);
+    }
+  }
   if (!useForecast) note("The forecast isn't available right now, so ratings use the ground wetness measured so far only.");
   else if (!anyFeels) note("Temperature isn't available yet, so ratings use ground wetness and rain only.");
   note("Estimate from the average of all gauges. Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.");
