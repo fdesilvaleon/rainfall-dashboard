@@ -9,7 +9,7 @@
   "periods lists the forecast periods counted for each day, as NWS gave them (converted from mm to inches)."
  ],
  "time_zone": "America/Los_Angeles",
- "fetched_at": "2026-11-17T08:00:53-08:00",
+ "fetched_at": "2026-11-17T09:10:40-08:00",
  "gauges": {
   "6121": {
    "name": "Mountain View",
@@ -18,21 +18,21 @@
     "x": 94,
     "y": 86
    },
-   "nws_updated": "2026-11-17T11:46:48+00:00",
-   "fetched_at": "2026-11-17T08:00:53-08:00",
+   "nws_updated": "2026-11-17T15:53:08+00:00",
+   "fetched_at": "2026-11-17T09:10:40-08:00",
    "days": [
     {
      "date": "2026-11-17",
      "rain_in": 0.0,
-     "complete": true,
-     "hours_covered": 24.0,
+     "complete": false,
+     "hours_covered": 23.0,
      "chance_max_pct": 9,
      "periods": [
       {
-       "start": "2026-11-16T22:00-08:00",
-       "hours": 6.0,
+       "start": "2026-11-17T01:00-08:00",
+       "hours": 3.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 45.0
+       "apparent_temp_f": 44.0
       },
       {
        "start": "2026-11-17T04:00-08:00",
@@ -262,7 +262,7 @@
     "y": 83
    },
    "nws_updated": "2026-11-17T15:53:08+00:00",
-   "fetched_at": "2026-11-17T08:00:53-08:00",
+   "fetched_at": "2026-11-17T09:10:40-08:00",
    "days": [
     {
      "date": "2026-11-17",
@@ -505,7 +505,7 @@
     "y": 81
    },
    "nws_updated": "2026-11-17T15:53:08+00:00",
-   "fetched_at": "2026-11-17T08:00:53-08:00",
+   "fetched_at": "2026-11-17T09:10:40-08:00",
    "days": [
     {
      "date": "2026-11-17",
@@ -748,7 +748,7 @@
     "y": 84
    },
    "nws_updated": "2026-11-17T15:53:08+00:00",
-   "fetched_at": "2026-11-17T08:00:53-08:00",
+   "fetched_at": "2026-11-17T09:10:40-08:00",
    "days": [
     {
      "date": "2026-11-17",
@@ -991,7 +991,7 @@
     "y": 89
    },
    "nws_updated": "2026-11-17T15:53:08+00:00",
-   "fetched_at": "2026-11-17T08:00:53-08:00",
+   "fetched_at": "2026-11-17T09:10:40-08:00",
    "days": [
     {
      "date": "2026-11-17",
@@ -1234,7 +1234,7 @@
     "y": 83
    },
    "nws_updated": "2026-11-17T15:53:08+00:00",
-   "fetched_at": "2026-11-17T08:00:53-08:00",
+   "fetched_at": "2026-11-17T09:10:40-08:00",
    "days": [
     {
      "date": "2026-11-17",
@@ -1477,7 +1477,7 @@
     "y": 85
    },
    "nws_updated": "2026-11-17T15:53:08+00:00",
-   "fetched_at": "2026-11-17T08:00:53-08:00",
+   "fetched_at": "2026-11-17T09:10:40-08:00",
    "days": [
     {
      "date": "2026-11-17",
@@ -1713,6 +1713,6 @@
    ]
   }
  },
- "checked_at": "2026-11-17T08:00:53-08:00",
+ "checked_at": "2026-11-17T09:10:40-08:00",
  "last_error": null
 }
