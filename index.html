@@ -134,6 +134,17 @@
   .trail-table td.day small { display: block; color: var(--text-2); }
   .cell { border-radius: 6px; padding: 5px 4px; text-align: center; font-weight: 600; font-size: 0.8rem; }
   .trail-mobile { display: none; }
+  /* Region ratings (preview) */
+  .region-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+  .region-row { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+  .region-row h3 { margin: 0 0 6px; font-size: 1rem; }
+  .region-row .grid { display: grid; grid-template-columns: 64px repeat(3, 1fr); gap: 4px; align-items: center; }
+  .region-row .grid .head { text-align: center; color: var(--text-2); font-size: 0.78rem; font-weight: 600; }
+  .region-row .grid .sport { font-size: 0.8rem; color: var(--text-2); }
+  .region-row .cell.past { background: var(--tile-bg); color: var(--muted); font-weight: 400; }
+  .region-row .facts { margin: 8px 0 0; font-size: 0.82rem; color: var(--text-2); }
+  .region-row .facts b { color: var(--text); font-weight: 600; }
+  .region-row .nodata { color: var(--muted); }
   .trail-mobile .labels, .trail-mobile .row { display: grid; grid-template-columns: 64px repeat(3, 1fr); gap: 4px; align-items: center; margin-top: 4px; }
   .trail-mobile .labels span { text-align: center; color: var(--text-2); font-size: 0.78rem; font-weight: 600; }
   .trail-mobile .daytitle { margin: 10px 0 2px; font-weight: 600; font-size: 0.9rem; }
@@ -298,6 +309,12 @@
     <div id="trail-today" class="trail-today"></div>
     <div id="trail-next" class="trail-card trail-next"></div>
     <div id="trail-notes" class="footnote"></div>
+  </section>
+
+  <section class="card" id="regions">
+    <h2>Region ratings (preview)</h2>
+    <p class="sub">A preview of trail ratings for each region, from that region's own gauges. It will be replaced by the map.</p>
+    <div id="region-rows" class="region-rows"></div>
   </section>
 
   <section class="card">
@@ -1747,17 +1764,35 @@ const TRAIL = {
     running: { optimal: [45, 68], good: [38, 78], fair: [30, 88] },
     biking: { optimal: [50, 72], good: [42, 82], fair: [34, 92] },
   },
+  // Trail regions, each rated with its own gauges (ids from gauges.csv), shown in "Region ratings (preview)".
+  // The Trail conditions tiles above still use GAUGES. useWetness: false = paved, so ground wetness isn't used and
+  // the rating is the worse of block rain and comfort.
+  REGIONS: [
+    { id: "foothills", name: "Peninsula foothills", gauges: ["6140", "6100", "6142", "6147"], useWetness: true },
+    // 6146 Los Trancos is not a Valley Water sensor; Valley Water says its data isn't quality-checked.
+    { id: "skyline", name: "Skyline ridge", gauges: ["6148", "6149", "6150", "6146"], useWetness: true },
+    { id: "south", name: "South Valley", gauges: ["6123", "6004", "6128", "6141"], useWetness: true },
+    { id: "valley", name: "Valley floor", gauges: ["6121", "6048", "6129", "6144"], useWetness: false },
+  ],
 };
 // ==============================================================================================
 
 const SPORTS = [["running", "Running"], ["biking", "Biking"]];
 
-// The gauges used for trail conditions (TRAIL.GAUGES) that have data.
-function trailGauges() {
-  return state.gauges.filter(g => g.ok && TRAIL.GAUGES.includes(g.id));
+// A trail region by id (TRAIL.REGIONS), or the original Trail conditions set (TRAIL.GAUGES) when no id is given.
+function trailRegion(regionId) {
+  if (regionId == null) return { id: null, name: "Trail conditions", gauges: TRAIL.GAUGES, useWetness: true };
+  const r = TRAIL.REGIONS.find(x => x.id === regionId);
+  if (!r) throw new Error(`unknown trail region ${regionId}`);
+  return r;
 }
-function trailNames() {
-  return TRAIL.GAUGES.map(id => (state.gauges.find(g => g.id === id) || { label: id }).label).join(", ");
+// The gauges used for trail conditions that have data: TRAIL.GAUGES, or a region's gauges.
+function trailGauges(regionId) {
+  const ids = trailRegion(regionId).gauges;
+  return state.gauges.filter(g => g.ok && ids.includes(g.id));
+}
+function trailNames(regionId) {
+  return trailRegion(regionId).gauges.map(id => (state.gauges.find(g => g.id === id) || { label: id }).label).join(", ");
 }
 
 // The three checks. Values are compared as shown on the page (inches to 2 decimals, whole degrees).
@@ -1768,11 +1803,11 @@ function rateWetness(sport, inches, multiplier = 1) {
 }
 
 // The season total (average of the gauges' rain since Oct 1, as shown on the page) and each sport's multiplier.
-function seasonAdjustment(totalOverride) {
+function seasonAdjustment(totalOverride, regionId) {
   let total = totalOverride;
   let gauges = null;
   if (total === undefined) {
-    const values = trailGauges().map(g => seasonTotal(g).value).filter(v => v != null);
+    const values = trailGauges(regionId).map(g => seasonTotal(g).value).filter(v => v != null);
     gauges = values.length;
     total = values.length ? Math.round(values.reduce((a, v) => a + v, 0) / values.length * 100) / 100 : null;
   }
@@ -1833,10 +1868,11 @@ function forecastPeriods(id) {
   return out;
 }
 
-// The inputs for one block, averaged over gauges. useForecast=false: ground wetness only, as measured so far.
-function blockInputs(startH, endH, useForecast) {
-  const wet = [], rain = [], feels = [];
-  for (const g of trailGauges()) {
+// The inputs for one block, averaged over gauges (TRAIL.GAUGES, or a region's). useForecast=false: ground wetness
+// only, as measured so far.
+function blockInputs(startH, endH, useForecast, regionId) {
+  const wet = [], rain = [], feels = [], wetIds = [];
+  for (const g of trailGauges(regionId)) {
     const periods = useForecast ? forecastPeriods(g.id) : [];
     const anchor = useForecast ? startH : Math.min(startH, g.last + 1);
     const hourRain = h => {
@@ -1853,7 +1889,7 @@ function blockInputs(startH, endH, useForecast) {
         windows[k] += v;
       }
     }
-    if (complete) wet.push(windows);
+    if (complete) { wet.push(windows); wetIds.push(g.id); }
     if (!useForecast) continue;
     // Forecast rain and feels-like during the block, from the periods that overlap it.
     let r = 0, covered = 0, rainOk = true, fSum = 0, fHours = 0;
@@ -1871,20 +1907,23 @@ function blockInputs(startH, endH, useForecast) {
   const win = [0, 1, 2].map(k => avg(wet.map(w => w[k])));
   return {
     wetness: wet.length ? TRAIL.WETNESS_WEIGHTS.reduce((s, w, k) => s + w * win[k], 0) : null,
-    windows: win, wetGauges: wet.length,
+    windows: win, wetGauges: wet.length, wetIds,
     rain: avg(rain), rainGauges: rain.length,
     feels: avg(feels), feelsGauges: feels.length,
   };
 }
 
 // Ratings for one block and sport: each check (null when it can't be made) and the worst of them.
-function blockRating(inputs, sport, multiplier = 1) {
+// useWetness=false (paved areas): ground wetness isn't checked, and the rating is the worse of block rain and
+// comfort (no rating if neither is known).
+function blockRating(inputs, sport, multiplier = 1, useWetness = true) {
   const checks = {
     rain: inputs.rain == null ? null : rateBlockRain(sport, inputs.rain),
-    wetness: inputs.wetness == null ? null : rateWetness(sport, inputs.wetness, multiplier),
+    wetness: !useWetness || inputs.wetness == null ? null : rateWetness(sport, inputs.wetness, multiplier),
     comfort: inputs.feels == null ? null : rateComfort(sport, inputs.feels),
   };
   const known = Object.values(checks).filter(v => v != null);
+  if (!useWetness) return { checks, rating: known.length ? Math.max(...known) : null, noWetness: true };
   return { checks, rating: inputs.wetness == null ? null : Math.max(...known) };
 }
 
@@ -1911,6 +1950,14 @@ function inputsText(inp) {
 // The one-line reason: the check that limits the rating (rain, then ground, then comfort on a tie).
 function reasonLine(sport, block, inp, r, futureRainAll) {
   const when = block.dayLabel ? `${block.dayLabel} ${block.when}` : `this ${block.when}`.replace("this mid day", "around mid day");
+  if (r.noWetness) {
+    const why = "Rating from the weather in the block (pavement, so ground wetness is not used)";
+    const c = r.checks;
+    if (r.rating === 0) return `${why}: no rain expected${inp.feels != null ? `, feels like ${Math.round(inp.feels)}°F` : ""}.`;
+    if (c.rain === r.rating) return `${why}: rain expected ${when} (${inp.rain.toFixed(2)} in).`;
+    const f = Math.round(inp.feels);
+    return `${why}: ${f < TRAIL.COMFORT[sport].optimal[0] ? "cold" : "hot"}, feels like ${f}°F ${when}.`;
+  }
   if (r.rating === 0) {
     const dry = `Ground is dry: ${inp.wetness.toFixed(2)} in over the last 3 days`;
     return futureRainAll === 0 ? `${dry}, no rain forecast.` : `${dry}.`;
@@ -1922,12 +1969,46 @@ function reasonLine(sport, block, inp, r, futureRainAll) {
   return `${f < TRAIL.COMFORT[sport].optimal[0] ? "Cold" : "Hot"}: feels like ${f}°F ${when}.`;
 }
 
-function renderTrail() {
+// Inputs for every block of today and the next 2 days, for TRAIL.GAUGES or a region's gauges.
+function trailGrid(regionId, useForecast, days, nowH) {
+  return days.map((d, k) => TRAIL.BLOCKS.map(b => {
+    const startH = pacificHour(d, b.start), endH = pacificHour(d, b.end);
+    return { ...b, date: d, startH, endH, past: k === 0 && nowH >= endH, inputs: blockInputs(startH, endH, useForecast, regionId),
+             dayLabel: k === 0 ? "" : k === 1 ? "tomorrow" : dayTitle(d).split(",")[0] };
+  }));
+}
+
+// Today's rating for one sport: the worst block still ahead, or, once all have ended, the afternoon's ground wetness
+// (for paved regions, which don't use wetness: no rating once all blocks have ended).
+function todaySummary(blocks, sport, multiplier, useWetness = true) {
+  const rated = blocks.map(b => ({ b, r: blockRating(b.inputs, sport, multiplier, useWetness) }));
+  const ahead = rated.filter(x => !x.b.past && x.r.rating != null);
+  let big, reason, gaugesUsed;
+  if (ahead.length) {
+    const worst = ahead.reduce((a, x) => (x.r.rating > a.r.rating ? x : a));
+    big = worst.r.rating;
+    const futureRain = ahead.every(x => x.b.inputs.rain != null) ? (ahead.some(x => rateBlockRain(sport, x.b.inputs.rain) > 0) ? 1 : 0) : null;
+    reason = reasonLine(sport, worst.b, worst.b.inputs, worst.r, futureRain);
+    gaugesUsed = worst.b.inputs.wetGauges;
+  } else {
+    const evening = blocks[blocks.length - 1].inputs;
+    big = !useWetness || evening.wetness == null ? null : rateWetness(sport, evening.wetness, multiplier);
+    reason = big == null ? "Not enough data for a rating." :
+      `Today's blocks have ended; rated on ground wetness: ${evening.wetness.toFixed(2)} in over the last 3 days.`;
+    gaugesUsed = evening.wetGauges;
+  }
+  return { rated, big, reason, gaugesUsed };
+}
+
+// regionId: rate with a region's gauges (TRAIL.REGIONS) instead of TRAIL.GAUGES. Not used yet: the tiles still show
+// TRAIL.GAUGES.
+function renderTrail(regionId) {
+  const region = trailRegion(regionId);
   const next = document.getElementById("trail-next"), notes = document.getElementById("trail-notes");
   const todayBox = document.getElementById("trail-today");
   todayBox.textContent = ""; next.textContent = ""; notes.textContent = "";
   const note = text => notes.appendChild(el("p", text));
-  if (!trailGauges().length) {
+  if (!trailGauges(regionId).length) {
     todayBox.appendChild(el("p", "Trail conditions need the hourly rain data, which couldn't be loaded right now.", "message"));
     next.hidden = true;
     return;
@@ -1937,12 +2018,8 @@ function renderTrail() {
   const date0 = pacificToday();
   const days = [0, 1, 2].map(k => addDays(date0, k));
   // Inputs for every block of today and the next 2 days.
-  const grid = days.map((d, k) => TRAIL.BLOCKS.map(b => {
-    const startH = pacificHour(d, b.start), endH = pacificHour(d, b.end);
-    return { ...b, date: d, startH, endH, past: k === 0 && nowH >= endH, inputs: blockInputs(startH, endH, useForecast),
-             dayLabel: k === 0 ? "" : k === 1 ? "tomorrow" : dayTitle(d).split(",")[0] };
-  }));
-  const season = seasonAdjustment();
+  const grid = trailGrid(regionId, useForecast, days, nowH);
+  const season = seasonAdjustment(undefined, regionId);
   const mult = season.multiplier;
   state.trail = { grid, useForecast, season };  // kept for checking by hand
   let anyFeels = false;
@@ -1950,23 +2027,7 @@ function renderTrail() {
 
   // Today: one card per sport.
   for (const [sport, sportName] of SPORTS) {
-    const blocks = grid[0];
-    const rated = blocks.map(b => ({ b, r: blockRating(b.inputs, sport, mult[sport]) }));
-    const ahead = rated.filter(x => !x.b.past && x.r.rating != null);
-    let big, reason, gaugesUsed;
-    if (ahead.length) {
-      const worst = ahead.reduce((a, x) => (x.r.rating > a.r.rating ? x : a));
-      big = worst.r.rating;
-      const futureRain = ahead.every(x => x.b.inputs.rain != null) ? (ahead.some(x => rateBlockRain(sport, x.b.inputs.rain) > 0) ? 1 : 0) : null;
-      reason = reasonLine(sport, worst.b, worst.b.inputs, worst.r, futureRain);
-      gaugesUsed = worst.b.inputs.wetGauges;
-    } else {
-      const evening = blocks[blocks.length - 1].inputs;
-      big = evening.wetness == null ? null : rateWetness(sport, evening.wetness, mult[sport]);
-      reason = big == null ? "Not enough data for a rating." :
-        `Today's blocks have ended; rated on ground wetness: ${evening.wetness.toFixed(2)} in over the last 3 days.`;
-      gaugesUsed = evening.wetGauges;
-    }
+    const { rated, big, reason, gaugesUsed } = todaySummary(grid[0], sport, mult[sport], region.useWetness);
     const card = el("div", null, "trail-card");
     const h = el("h3", sportName + " ");
     h.appendChild(el("span", dayTitle(date0)));
@@ -2008,7 +2069,7 @@ function renderTrail() {
       return `${vals.length ? avg(vals).toFixed(2) + " in" : "– in"} · ${chances.length ? Math.round(avg(chances)) + "% chance" : "chance unknown"}`;
     };
     const cell = (b, sport, tag) => {
-      const r = blockRating(b.inputs, sport, mult[sport]);
+      const r = blockRating(b.inputs, sport, mult[sport], region.useWetness);
       const c = ratingBox(r.rating, "cell");
       if (tag === "td") { const td = el("td"); td.appendChild(c); c.textContent = r.rating == null ? "–" : TRAIL.RATINGS[r.rating]; td.title = inputsText(b.inputs); return td; }
       c.textContent = r.rating == null ? "–" : TRAIL.RATINGS[r.rating];
@@ -2061,7 +2122,70 @@ function renderTrail() {
   }
   if (!useForecast) note("The forecast isn't available right now, so ratings use the ground wetness measured so far only.");
   else if (!anyFeels) note("Temperature isn't available yet, so ratings use ground wetness and rain only.");
-  note(`Estimate from the average of ${TRAIL.GAUGES.length} gauges near Mountain View (${trailNames()}). Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.`);
+  note(regionId == null
+    ? `Estimate from the average of ${TRAIL.GAUGES.length} gauges near Mountain View (${trailNames()}). Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.`
+    : `Estimate for ${region.name} from the average of its gauges (${trailNames(regionId)}). Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.`);
+}
+
+// ---------- region ratings (preview) ----------
+
+// One region's ratings for today: per sport, the three blocks (rated like the Trail conditions tiles, with the
+// region's gauges), and the ground wetness measured so far. noData: none of the region's gauges has data.
+function regionToday(regionId) {
+  const region = trailRegion(regionId);
+  const gauges = trailGauges(regionId);
+  if (!gauges.length) return { region, noData: true, gaugesWithData: [] };
+  const useForecast = forecastUsable();
+  const nowH = Date.now() / HOUR_MS - 8;
+  const date0 = pacificToday();
+  const blocks = trailGrid(regionId, useForecast, [date0], nowH)[0];
+  const season = seasonAdjustment(undefined, regionId);
+  const sports = {};
+  for (const [sport] of SPORTS) sports[sport] = todaySummary(blocks, sport, season.multiplier[sport], region.useWetness);
+  // Ground wetness now: the last 72 hours measured (as for blocks once the forecast isn't used).
+  const nowWhole = Math.ceil(nowH);  // whole hours, like the block start times
+  const now = blockInputs(nowWhole, nowWhole + 1, false, regionId);
+  return { region, date: date0, blocks, sports, season, wetness: now.wetness, wetIds: now.wetIds,
+           gaugesWithData: gauges.map(g => g.id), useForecast };
+}
+
+function renderRegionPreview() {
+  const box = document.getElementById("region-rows");
+  box.textContent = "";
+  state.regions = {};  // kept for checking by hand
+  const label = id => (state.gauges.find(g => g.id === id) || { label: id }).label;
+  for (const r of TRAIL.REGIONS) {
+    const t = regionToday(r.id);
+    state.regions[r.id] = t;
+    const row = el("div", null, "region-row");
+    row.appendChild(el("h3", r.name));
+    if (t.noData) {
+      row.appendChild(el("p", "No data: none of this region's gauges could be loaded.", "nodata"));
+    } else {
+      const grid = el("div", null, "grid");
+      grid.appendChild(el("span"));
+      TRAIL.BLOCKS.forEach(b => grid.appendChild(el("span", b.name, "head")));
+      for (const [sport, sportName] of SPORTS) {
+        grid.appendChild(el("span", sportName, "sport"));
+        for (const { b, r: rr } of t.sports[sport].rated) {
+          const c = b.past ? el("div", "Past", "cell past") : ratingBox(rr.rating, "cell");
+          if (!b.past) c.textContent = rr.rating == null ? "No rating" : TRAIL.RATINGS[rr.rating];
+          c.title = `${b.label}: ${inputsText(b.inputs)}`;
+          grid.appendChild(c);
+        }
+      }
+      row.appendChild(grid);
+      const facts = el("p", null, "facts");
+      facts.append("Ground wetness: ");
+      facts.appendChild(el("b", !r.useWetness ? "not used (pavement)" : t.wetness == null ? "no data" : `${t.wetness.toFixed(2)} in`));
+      if (!r.useWetness) facts.append(" · rated on the weather in each block");
+      row.appendChild(facts);
+      const missing = r.gauges.filter(id => !t.gaugesWithData.includes(id));
+      row.appendChild(el("p", `Gauges: ${t.gaugesWithData.map(label).join(", ")}` +
+        (missing.length ? ` (no data: ${missing.map(label).join(", ")})` : ""), "facts"));
+    }
+    box.appendChild(row);
+  }
 }
 
 // ---------- controls ----------
@@ -2112,6 +2236,7 @@ async function main() {
   }
   renderHeader();
   try { renderTrail(); } catch (e) { console.error(e); }
+  try { renderRegionPreview(); } catch (e) { console.error(e); }
   setupControls();
   try { renderMap(); } catch (e) {
     console.error(e);
