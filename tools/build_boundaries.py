@@ -284,7 +284,11 @@ def east_of(line_id, cache):
     els = [el for el in overpass(q, cache, name)["elements"] if el.get("tags", {}).get("highway") not in NOT_ROADS]
     lines = [LineString([(p["lon"], p["lat"]) for p in el["geometry"]]) for el in els if len(el.get("geometry", [])) > 1]
     if not lines:
-        raise RuntimeError(f"{line_id}: not found in OpenStreetMap")
+        # Say what is there, to fix the filter.
+        q2 = f'[out:json][timeout:60];way["name"~"Foothill",i]({s},{w},{n},{e});out tags center;'
+        seen = sorted({(el.get("tags", {}).get("name"), el.get("tags", {}).get("highway"), round(el.get("center", {}).get("lat", 0), 3),
+                        round(el.get("center", {}).get("lon", 0), 3)) for el in overpass(q2, None, "foothill_names")["elements"]})
+        raise RuntimeError(f"{line_id}: not found in OpenStreetMap. Ways named like Foothill here: {seen[:40]}")
     pts = [pt for line in lines for pt in line.coords]
     ends = {"north": max(pts, key=lambda p: p[1]), "south": min(pts, key=lambda p: p[1]), "east": max(pts, key=lambda p: p[0])}
     to_edge = {"north": lambda p: (p[0], n + 0.1), "south": lambda p: (p[0], s - 0.1), "east": lambda p: (e + 0.1, p[1])}
