@@ -1,3 +1,4 @@
+overpass_parks.json: HTTP Error 502: Bad Gateway; trying again in 60 seconds
 Wrote data/parks.geojson: 17 features, 38 KB
 Wrote data/cities.geojson: 5 features, 11 KB
 
