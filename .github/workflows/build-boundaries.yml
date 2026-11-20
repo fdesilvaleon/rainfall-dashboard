@@ -11,6 +11,7 @@ on:
     branches: [add-boundaries]
     paths:
       - tools/build_boundaries.py
+      - tools/diagnose_boundaries.py
       - data/regions.json
       - .github/workflows/build-boundaries.yml
 
@@ -32,6 +33,11 @@ jobs:
           python-version: "3.12"
       - name: Install map libraries
         run: pip install shapely pyproj pyshp
+      - name: Diagnose (temporary)
+        run: |
+          set +e
+          python tools/diagnose_boundaries.py > tools/boundaries_diagnosis.txt 2>&1
+          cat tools/boundaries_diagnosis.txt
       - name: Build boundary files
         run: |
           mkdir -p downloads
@@ -55,6 +61,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
           git add tools/boundaries_report.txt data/cities.geojson
+          [ -f tools/boundaries_diagnosis.txt ] && git add tools/boundaries_diagnosis.txt
           [ -f data/parks.geojson ] && git add data/parks.geojson
           if git diff --cached --quiet; then
             echo "Nothing changed."
