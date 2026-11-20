@@ -44,6 +44,8 @@ GAUGES = ROOT / "gauges.csv"
 
 USER_AGENT = "rainfall-dashboard boundary build (github.com/fdesilvaleon/rainfall-dashboard)"
 OVERPASS = "https://overpass-api.de/api/interpreter"
+# Other public Overpass servers (same OpenStreetMap data), tried in turn if the main one can't be reached.
+OVERPASS_FALLBACKS = ["https://overpass.kumi.systems/api/interpreter", "https://overpass.private.coffee/api/interpreter"]
 CENSUS_YEAR = 2025
 CENSUS_ZIP = f"https://www2.census.gov/geo/tiger/GENZ{CENSUS_YEAR}/shp/cb_{CENSUS_YEAR}_06_place_500k.zip"
 AREA = (37.05, -122.45, 37.55, -121.60)  # south, west, north, east: where to look for parks
@@ -61,6 +63,18 @@ def transform(func, geom):
 
 
 # ---------- downloads ----------
+
+def overpass(query, cache, name):
+    """Run an Overpass query, trying the fallback servers if the main one fails."""
+    error = None
+    for url in [OVERPASS] + OVERPASS_FALLBACKS:
+        try:
+            return json.loads(download(url, cache, name, data={"data": query}))
+        except Exception as e:
+            error = e
+            print(f"{name}: {url} failed ({e})", file=sys.stderr)
+    raise RuntimeError(f"no Overpass server answered ({error})")
+
 
 def download(url, cache, name, data=None, timeout=300):
     """One request; if it fails, one more try after a minute (Overpass is sometimes busy)."""
@@ -156,7 +170,7 @@ def fetch_parks(parks, cache):
     s, w, n, e = AREA
     query = (f'[out:json][timeout:180];(relation["name"~"{pattern}",i]({s},{w},{n},{e});'
              f'way["name"~"{pattern}",i]({s},{w},{n},{e}););out geom;')
-    return json.loads(download(OVERPASS, cache, "overpass_parks.json", data={"data": query}))["elements"]
+    return overpass(query, cache, "overpass_parks.json")["elements"]
 
 
 def match_park(park, elements):
@@ -216,7 +230,7 @@ def east_of_280(cache):
     Each carriageway is closed into an area with lines out to the east; a place must be east of both."""
     s, w, n, e = I280_AREA
     q = f'[out:json][timeout:120];way["highway"="motorway"]["ref"~"(^|;)I 280($|;)"]({s},{w},{n},{e});out geom;'
-    els = json.loads(download(OVERPASS, cache, "overpass_i280.json", data={"data": q}))["elements"]
+    els = overpass(q, cache, "overpass_i280.json")["elements"]
     lines = [LineString([(p["lon"], p["lat"]) for p in el["geometry"]]) for el in els if len(el.get("geometry", [])) > 1]
     merged = linemerge(lines)
     parts = sorted(getattr(merged, "geoms", [merged]), key=lambda g: g.length, reverse=True)[:2]

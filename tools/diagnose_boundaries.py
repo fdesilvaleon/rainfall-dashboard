@@ -41,7 +41,7 @@ def osm_candidates():
          f'relation["name"~"{pattern}",i]({s},{w},{n},{e});way["name"~"{pattern}",i]({s},{w},{n},{e});'
          f'relation["operator"~"Midpeninsula|Midpen",i]({s},{w},{n},{e});way["operator"~"Midpeninsula|Midpen",i]({s},{w},{n},{e});'
          f');out geom;')
-    els = json.loads(get(bb.OVERPASS, {"data": q}))["elements"]
+    els = bb.overpass(q, None, "diag_candidates")["elements"]
     rows = []
     for el in els:
         t = el.get("tags", {})
@@ -69,7 +69,7 @@ def i280():
     section("OpenStreetMap: Interstate 280")
     s, w, n, e = 37.15, -122.35, 37.55, -121.85
     q = f'[out:json][timeout:120];way["highway"="motorway"]["ref"~"(^|;)I 280($|;)"]({s},{w},{n},{e});out geom;'
-    els = json.loads(get(bb.OVERPASS, {"data": q}))["elements"]
+    els = bb.overpass(q, None, "diag_i280")["elements"]
     lats = [p["lat"] for el in els for p in el.get("geometry", [])]
     print(f"{len(els)} motorway ways, latitudes {min(lats):.3f} to {max(lats):.3f}" if lats else "nothing found")
 
@@ -107,8 +107,34 @@ def midpen_acreage():
         time.sleep(2)
 
 
+MIDPEN_ITEM = "42acb356e3184bb69cfce0822c0d2c5f"
+MIDPEN_LAYER = "https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Preserve_Boundary_(public)/FeatureServer"
+
+
+def midpen_official():
+    section("Midpen 'Preserve Boundary' layer: full license and terms")
+    item = json.loads(get(f"https://www.arcgis.com/sharing/rest/content/items/{MIDPEN_ITEM}?f=json"))
+    for key in ("licenseInfo", "accessInformation", "description", "snippet"):
+        text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", item.get(key) or "")).strip()
+        print(f"{key}: {text or '(empty)'}\n")
+    section("Midpen 'Preserve Boundary' layer: fields and preserves")
+    svc = json.loads(get(MIDPEN_LAYER + "?f=json"))
+    print("layers:", [(l["id"], l["name"]) for l in svc.get("layers", [])])
+    lid = svc["layers"][0]["id"]
+    meta = json.loads(get(f"{MIDPEN_LAYER}/{lid}?f=json"))
+    print("fields:", [f["name"] for f in meta.get("fields", [])])
+    q = urllib.parse.urlencode({"where": "1=1", "outFields": "*", "outSR": 4326, "f": "geojson"})
+    fc = json.loads(get(f"{MIDPEN_LAYER}/{lid}/query?{q}"))
+    from shapely.geometry import shape
+    print(f"{len(fc.get('features', []))} features")
+    for f in sorted(fc.get("features", []), key=lambda f: json.dumps(f["properties"], sort_keys=True)):
+        g = shape(f["geometry"]) if f.get("geometry") else None
+        props = {k: v for k, v in f["properties"].items() if v not in (None, "") and not k.lower().startswith(("shape", "objectid", "globalid"))}
+        print(f"  {bb.area_km2(g) if g else 0:7.2f} km2  pieces {bb.pieces(g) if g else 0}  {props}")
+
+
 if __name__ == "__main__":
-    for step in (osm_candidates, i280, arcgis_search, midpen_acreage):
+    for step in (midpen_official, osm_candidates, i280, arcgis_search, midpen_acreage):
         try:
             step()
         except Exception as e:
