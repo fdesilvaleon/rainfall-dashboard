@@ -402,7 +402,7 @@ def main():
                  f"(openstreetmap.org/copyright). Built by tools/build_boundaries.py; simplified to about {SIMPLIFY_M} m.")
     park_geoms = None
     # Parks first: the cities are trimmed with them.
-    if args.only != "cities" or not args.untrimmed:
+    if args.only != "cities":
         try:
             features = build_parks(cfg, args.cache_dir, report)
             park_geoms = {r["name"]: r["geom"] for r in report if r.get("kind") == "park" and r.get("geom") is not None}
@@ -412,6 +412,10 @@ def main():
         except Exception as e:
             print(f"parks: FAILED to download or build ({e}); {PARKS_OUT.name} left unchanged", file=sys.stderr)
             failed = True
+    if args.only != "parks" and not park_geoms and not args.untrimmed and PARKS_OUT.exists():
+        # The park download failed (or wasn't asked for): trim with the park outlines already saved.
+        park_geoms = {f["properties"]["name"]: shape(f["geometry"]) for f in json.loads(PARKS_OUT.read_text())["features"]}
+        print(f"Trimming the cities with the saved {PARKS_OUT.relative_to(ROOT)} ({len(park_geoms)} parks)")
     if args.only != "parks":
         try:
             features = build_cities(cfg, args.cache_dir, report, park_geoms, trim=not args.untrimmed)
