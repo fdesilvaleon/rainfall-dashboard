@@ -5,6 +5,7 @@
   "region must be one of the ids under \"regions\".",
   "Parks: \"match\" lists OpenStreetMap names (case-insensitive) to try in turn; the first that finds anything is used. \"osm\" pins the exact OpenStreetMap object instead.",
   "\"also\" adds more OpenStreetMap pieces to a park, by exact name or as \"relation/123\" or \"way/123\": OpenStreetMap maps Midpen preserves as an open part plus separately named closed areas.",
+  "Cities: \"east_of\" is the road the city is cut along (only the bay side is kept, minus parks): \"I-280\" or \"Foothill Boulevard\" (the lines are defined in tools/build_boundaries.py, CUT_LINES).",
   "Cities: \"census_geoid\" is the city's 7-digit id in the US Census places file (names alone are ambiguous: there is also a Mountain View in Contra Costa County)."
  ],
  "regions": [
@@ -33,10 +34,10 @@
   {"name": "Santa Teresa County Park", "region": "south", "match": ["Santa Teresa County Park"]}
  ],
  "cities": [
-  {"name": "Palo Alto", "region": "valley", "census_geoid": "0655282"},
-  {"name": "Mountain View", "region": "valley", "census_geoid": "0649670"},
-  {"name": "Sunnyvale", "region": "valley", "census_geoid": "0677000"},
-  {"name": "Los Altos", "region": "valley", "census_geoid": "0643280"},
-  {"name": "Cupertino", "region": "valley", "census_geoid": "0617610"}
+  {"name": "Palo Alto", "region": "valley", "census_geoid": "0655282", "east_of": "I-280"},
+  {"name": "Mountain View", "region": "valley", "census_geoid": "0649670", "east_of": "I-280"},
+  {"name": "Sunnyvale", "region": "valley", "census_geoid": "0677000", "east_of": "I-280"},
+  {"name": "Los Altos", "region": "valley", "census_geoid": "0643280", "east_of": "I-280"},
+  {"name": "Cupertino", "region": "valley", "census_geoid": "0617610", "east_of": "Foothill Boulevard"}
  ]
 }

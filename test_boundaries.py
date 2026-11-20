@@ -13,6 +13,32 @@ MAX_FILE = 500 * 1024
 MAX_TOTAL = 1.5 * 1024 * 1024
 
 
+def area_km2(geometry):
+    """Approximate area (km2) of a GeoJSON Polygon/MultiPolygon: shoelace on a local flat projection."""
+    import math
+    polys = [geometry["coordinates"]] if geometry["type"] == "Polygon" else geometry["coordinates"]
+    total = 0.0
+    for poly in polys:
+        for k, ring in enumerate(poly):
+            lat0 = math.radians(sum(p[1] for p in ring) / len(ring))
+            xy = [(lon * 111.320 * math.cos(lat0), lat * 110.574) for lon, lat in ring]
+            a = abs(sum(x1 * y2 - x2 * y1 for (x1, y1), (x2, y2) in zip(xy, xy[1:]))) / 2
+            total += a if k == 0 else -a  # holes count negative
+    return total
+
+
+def contains(geometry, lon, lat):
+    """Point-in-polygon (ray casting), holes included."""
+    polys = [geometry["coordinates"]] if geometry["type"] == "Polygon" else geometry["coordinates"]
+    def in_ring(ring):
+        inside = False
+        for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
+            if (y1 > lat) != (y2 > lat) and lon < x1 + (lat - y1) * (x2 - x1) / (y2 - y1):
+                inside = not inside
+        return inside
+    return any(in_ring(poly[0]) and not any(in_ring(h) for h in poly[1:]) for poly in polys)
+
+
 def load(name):
     return json.loads((DATA / name).read_text())
 
@@ -41,6 +67,13 @@ class RegionsTests(unittest.TestCase):
         self.assertEqual({c["region"] for c in self.cfg["cities"]}, {"valley"})
         for c in self.cfg["cities"]:
             self.assertRegex(c["census_geoid"], r"^06\d{5}$")
+
+    def test_cut_lines(self):
+        lines = {c["name"]: c["east_of"] for c in self.cfg["cities"]}
+        self.assertTrue(set(lines.values()) <= {"I-280", "Foothill Boulevard"})
+        self.assertEqual(lines["Cupertino"], "Foothill Boulevard")
+        for name in ("Palo Alto", "Mountain View", "Sunnyvale", "Los Altos"):
+            self.assertEqual(lines[name], "I-280", name)
 
 
 class GeoJsonTests(unittest.TestCase):
@@ -75,6 +108,23 @@ class GeoJsonTests(unittest.TestCase):
 
     def test_cities(self):
         self.check_collection("cities.geojson", self.cfg["cities"])
+
+    def test_trimmed_cities_keep_the_flat_part(self):
+        cities = {f["properties"]["name"]: f["geometry"] for f in load("cities.geojson")["features"]}
+        cupertino = cities["Cupertino"]
+        self.assertTrue(10 < area_km2(cupertino) < 30, f"Cupertino is {area_km2(cupertino):.1f} km2")
+        self.assertTrue(contains(cupertino, -122.0293, 37.3197), "Cupertino city hall must be kept")
+        self.assertFalse(contains(cupertino, -122.0900, 37.3150), "the hills west of Foothill Boulevard must be dropped")
+        palo_alto = cities["Palo Alto"]
+        self.assertTrue(contains(palo_alto, -122.1430, 37.4443), "downtown Palo Alto must be kept")
+        self.assertFalse(contains(palo_alto, -122.1800, 37.3600), "Foothills Park must not be in Palo Alto's area")
+        # No city area overlaps a park much: no park's middle point lies inside a city area.
+        for park in load("parks.geojson")["features"]:
+            ring = (park["geometry"]["coordinates"] if park["geometry"]["type"] == "Polygon" else park["geometry"]["coordinates"][0])[0]
+            lon, lat = sum(p[0] for p in ring) / len(ring), sum(p[1] for p in ring) / len(ring)
+            for name, g in cities.items():
+                if contains(park["geometry"], lon, lat):
+                    self.assertFalse(contains(g, lon, lat), f"{park['properties']['name']} overlaps {name}")
 
     def test_sizes(self):
         sizes = {n: (DATA / n).stat().st_size for n in ("regions.json", "parks.geojson", "cities.geojson")}

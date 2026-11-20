@@ -377,10 +377,14 @@ files: nothing updates them automatically, and the page doesn't use them yet.
   `region` and `source` (the OpenStreetMap objects it came from). A park in
   several separate pieces is one feature with several polygons.
 - **`data/cities.geojson`**: the Valley floor cities, same properties. These are
-  **not** the full city limits: each city keeps only the flat part **east of
-  Interstate 280** (the bay side), with every park in `parks.geojson` cut out, and
-  leftover slivers under 5 hectares dropped. Palo Alto and Cupertino, whose city
-  limits reach into the hills, lose the most.
+  **not** the full city limits: each city keeps only its flat part, east of a
+  dividing road (the bay side), with every park in `parks.geojson` cut out, and
+  leftover slivers under 5 hectares dropped. Palo Alto, Mountain View, Sunnyvale
+  and Los Altos are cut along **Interstate 280**. **Cupertino** is cut along
+  **Foothill Boulevard** instead, because most of the city lies south-west of
+  I-280; north and south of the boulevard's ends the cut continues straight north
+  and south. Each city's road is its `"east_of"` in `regions.json`; the roads are
+  defined in `CUT_LINES` in `tools/build_boundaries.py`.
 - **`tools/boundaries_report.txt`**: the report from the last build (what was
   matched, area, pieces, nearest gauge, full and trimmed city areas, overlaps).
 - **`tools/midpen_comparison.txt`**: the check of the Midpen preserve outlines
@@ -398,7 +402,7 @@ published here.
 
 **Sources, licenses and the attribution to show:**
 
-- **Parks, the I-280 line and the park cut-outs in the city areas: OpenStreetMap**,
+- **Parks, the dividing roads (I-280, Foothill Boulevard) and the park cut-outs in the city areas: OpenStreetMap**,
   through the Overpass API. License:
   [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
   Show: **"© OpenStreetMap contributors"**, linked to
@@ -418,7 +422,7 @@ published here.
     python tools/build_boundaries.py --untrimmed  # full city limits instead of the trimmed ones
     python -m unittest test_boundaries
 
-The script makes one Overpass request for the parks and one for I-280 (trying two
+The script makes one Overpass request for the parks and one for each dividing road (trying two
 other public Overpass servers if the main one fails), and downloads one Census
 file (`--cache-dir DIR` keeps the downloads and reuses them). Parks are found by
 the names under `"match"` in `data/regions.json`; to fix a wrong match, add

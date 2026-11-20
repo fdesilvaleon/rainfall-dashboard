@@ -49,9 +49,6 @@ OVERPASS_FALLBACKS = ["https://overpass.kumi.systems/api/interpreter", "https://
 CENSUS_YEAR = 2025
 CENSUS_ZIP = f"https://www2.census.gov/geo/tiger/GENZ{CENSUS_YEAR}/shp/cb_{CENSUS_YEAR}_06_place_500k.zip"
 AREA = (37.05, -122.45, 37.55, -121.60)  # south, west, north, east: where to look for parks
-I280_AREA = (37.15, -122.35, 37.55, -121.85)  # where to fetch Interstate 280
-BAY_SIDE = (-122.0819, 37.3894)               # Mountain View city hall: east of I-280
-HILL_SIDE = (-122.1700, 37.3200)              # Monte Bello preserve: west of I-280
 MIN_PIECE_KM2 = 0.05                          # trimmed city pieces smaller than this (5 ha) are dropped as slivers
 SIMPLIFY_M = 20                          # simplification tolerance in metres
 DECIMALS = 5                             # about 1 m
@@ -245,39 +242,66 @@ def census_city_limits(cfg, cache):
     return out
 
 
-def east_of_280(cache):
-    """The area east of Interstate 280 (the bay side). The motorway's carriageways from OpenStreetMap become a
-    100 m-wide strip, extended to the edges of the search area at its north and east ends; the area minus that strip
-    falls into pieces, and the east side is the piece that holds a point on the bay side."""
-    s, w, n, e = I280_AREA
-    q = f'[out:json][timeout:120];way["highway"="motorway"]["ref"~"(^|;)I 280($|;)"]({s},{w},{n},{e});out geom;'
-    els = overpass(q, cache, "overpass_i280.json")["elements"]
+# The lines cities are cut along ("east_of" in data/regions.json). For each: the Overpass filter for the road,
+# where to look, which ends of the line to carry on to the edge of that area (so it divides the area in two),
+# a point that must end up on the kept (east) side, and one that must not.
+CUT_LINES = {
+    "I-280": {
+        "filter": 'way["highway"="motorway"]["ref"~"(^|;)I 280($|;)"]',
+        "area": (37.15, -122.35, 37.55, -121.85),
+        "extend": ("north", "east"),   # I-280 ends at US-101 in San Jose
+        "keep": (-122.0819, 37.3894),  # Mountain View city hall
+        "drop": (-122.1700, 37.3200),  # Monte Bello preserve
+    },
+    "Foothill Boulevard": {
+        "filter": 'way["highway"~"^(trunk|primary|secondary|tertiary)(_link)?$"]["name"~"^Foothill Boulevard$"]',
+        "area": (37.26, -122.15, 37.37, -121.95),
+        "extend": ("north", "south"),  # carried straight north and south from its ends
+        "keep": (-122.0293, 37.3197),  # Cupertino city hall
+        "drop": (-122.0900, 37.3150),  # hills west of Cupertino
+    },
+}
+
+
+def east_of(line_id, cache):
+    """The area east of a road (the bay side). The road from OpenStreetMap becomes a 100 m-wide strip, carried on to
+    the edges of its search area; the area minus that strip falls into pieces, and the east side is the piece that
+    holds the line's "keep" point (and must not hold its "drop" point)."""
+    cfg = CUT_LINES[line_id]
+    s, w, n, e = cfg["area"]
+    q = f'[out:json][timeout:120];{cfg["filter"]}({s},{w},{n},{e});out geom;'
+    name = "overpass_" + re.sub(r"\W+", "_", line_id.lower()).strip("_") + ".json"
+    els = overpass(q, cache, name)["elements"]
     lines = [LineString([(p["lon"], p["lat"]) for p in el["geometry"]]) for el in els if len(el.get("geometry", [])) > 1]
-    road = unary_union(lines)
-    # Carry the line on to the edges: north from its northern end, east from its eastern end (I-280 ends at US-101).
-    north = max((pt for line in lines for pt in line.coords), key=lambda pt: pt[1])
-    east_end = max((pt for line in lines for pt in line.coords), key=lambda pt: pt[0])
-    road = unary_union([road, LineString([north, (north[0], n + 0.1)]), LineString([east_end, (e + 0.1, east_end[1])])])
+    if not lines:
+        raise RuntimeError(f"{line_id}: not found in OpenStreetMap")
+    pts = [pt for line in lines for pt in line.coords]
+    ends = {"north": max(pts, key=lambda p: p[1]), "south": min(pts, key=lambda p: p[1]), "east": max(pts, key=lambda p: p[0])}
+    to_edge = {"north": lambda p: (p[0], n + 0.1), "south": lambda p: (p[0], s - 0.1), "east": lambda p: (e + 0.1, p[1])}
+    road = unary_union(lines + [LineString([ends[d], to_edge[d](ends[d])]) for d in cfg["extend"]])
     box = Polygon([(w, s), (e, s), (e, n), (w, n)])
     strip = transform(TO_DEG, transform(TO_M, road).buffer(50))
     sides = getattr(box.difference(strip), "geoms", [box.difference(strip)])
-    east = next((p for p in sides if p.contains(Point(BAY_SIDE))), None)
-    if east is None or east.contains(Point(HILL_SIDE)):
-        raise RuntimeError("couldn't separate the two sides of I-280 (the motorway line has a gap?)")
-    lats = [y for line in lines for _, y in line.coords]
-    return east, f"{len(els)} I-280 motorway ways, latitude {min(lats):.3f} to {max(lats):.3f}; area split into {len(sides)} pieces"
+    east = next((p for p in sides if p.contains(Point(cfg["keep"]))), None)
+    if east is None or east.contains(Point(cfg["drop"])):
+        raise RuntimeError(f"couldn't separate the two sides of {line_id} (the road line has a gap?)")
+    lats = [y for _, y in pts]
+    ext = ", ".join(f"{d} from {ends[d][1]:.4f},{ends[d][0]:.4f}" for d in cfg["extend"])
+    return east, f"{line_id}: {len(els)} OpenStreetMap ways, latitude {min(lats):.3f} to {max(lats):.3f}; carried on {ext}"
 
 
 def build_cities(cfg, cache, report, park_geoms=None, trim=True):
-    """City limits. With trim: only the part east of I-280, minus every park, and without slivers under MIN_PIECE_KM2."""
+    """City limits. With trim: only the part east of the city's "east_of" line, minus every park, and without
+    slivers under MIN_PIECE_KM2."""
     limits = census_city_limits(cfg, cache)
-    east = None
+    cuts = {}
     if trim:
         if not park_geoms:
             raise RuntimeError("the parks are needed to trim the cities, and they weren't built")
-        east, info = east_of_280(cache)
-        report.append({"kind": "note", "text": info})
         parks_all = unary_union(list(park_geoms.values()))
+        for line_id in sorted({c["east_of"] for c in cfg["cities"]}):
+            cuts[line_id], info = east_of(line_id, cache)
+            report.append({"kind": "note", "text": info})
     features = []
     for city in cfg["cities"]:
         if city["name"] not in limits:
@@ -287,14 +311,14 @@ def build_cities(cfg, cache, report, park_geoms=None, trim=True):
         source = f"US Census Bureau {CENSUS_YEAR} cartographic boundary file ({base}), GEOID {rec['GEOID']}"
         geom = full
         if trim:
-            geom = full.intersection(east).difference(parks_all)
+            geom = full.intersection(cuts[city["east_of"]]).difference(parks_all)
             keep = [p for p in getattr(geom, "geoms", [geom]) if p.geom_type == "Polygon" and area_km2(p) >= MIN_PIECE_KM2]
             geom = unary_union(keep)
-            source += "; trimmed to east of I-280 and without parks, using OpenStreetMap data"
+            source += f"; trimmed to east of {city['east_of']} and without parks, using OpenStreetMap data"
         geom = clean(geom)
         features.append(feature(city, geom, source))
         report.append({"kind": "city", "name": city["name"], "region": city["region"], "matched": rec["NAMELSAD"],
-                       "geom": geom, "full_km2": area_km2(full)})
+                       "geom": geom, "full_km2": area_km2(full), "east_of": city.get("east_of") if trim else None})
     return features
 
 
@@ -329,7 +353,8 @@ def print_report(report, gauges):
         near = min(((distance_km(g, float(x["lat"]), float(x["lon"])), x) for x in gauges), key=lambda t: t[0])
         print(f"{r['name']:38} {r['region']:9} {r['matched'][:42]:42} {area_km2(g):7.2f} {pieces(g):6}  "
               f"{near[1]['id']} {near[1]['name']} ({near[0]:.1f} km{', inside' if near[0] == 0 else ''})"
-              + (f"  [full city limits {r['full_km2']:.2f} km2]" if r.get("full_km2") else ""))
+              + (f"  [east of {r['east_of']}; full city limits {r['full_km2']:.2f} km2]" if r.get("east_of")
+                 else f"  [full city limits {r['full_km2']:.2f} km2]" if r.get("full_km2") else ""))
     # Overlaps: a park inside a city (valley region), or touching a park of another region.
     for r in report:
         if r.get("kind") == "note":
@@ -367,8 +392,8 @@ def main():
     with open(GAUGES, newline="") as f:
         gauges = list(csv.DictReader(f))
     report, failed = [], False
-    city_note = (f"City limits for the trail-region map: the part east of Interstate 280, without parks. Sources: US Census Bureau "
-                 f"{CENSUS_YEAR} cartographic boundary files (public domain); I-280 and park outlines (c) OpenStreetMap contributors, "
+    city_note = (f"City areas for the trail-region map: the part east of Interstate 280 (Cupertino: east of Foothill Boulevard), without parks. Sources: US Census Bureau "
+                 f"{CENSUS_YEAR} cartographic boundary files (public domain); road lines and park outlines (c) OpenStreetMap contributors, "
                  f"ODbL 1.0 (openstreetmap.org/copyright). Built by tools/build_boundaries.py; simplified to about {SIMPLIFY_M} m.")
     if args.untrimmed:
         city_note = (f"City limits (untrimmed) for the trail-region map. Source: US Census Bureau {CENSUS_YEAR} cartographic boundary "
