@@ -179,18 +179,18 @@
   .sport-toggle button:focus-visible { outline: 2px solid var(--accent); outline-offset: -4px; }
   .sport-toggle[hidden], .tmap-legend[hidden] { display: none; }
   .tmap-wrap { position: relative; }
-  #trail-map { height: 480px; border-radius: 8px; background: #f2f2f0; }
+  #trail-map { height: 660px; border-radius: 8px; background: #f2f2f0; }  /* tall enough for a closer zoom on wide screens */
   #trail-map .leaflet-control-attribution { white-space: normal; max-width: calc(100% - 12px); line-height: 1.3; }
   #trail-map path.leaflet-interactive:focus { outline: none; }
   #trail-map path.leaflet-interactive:focus-visible { stroke-width: 4px; }
-  .leaflet-marker-icon.tmap-label { background: none; border: 0; }
-  .tmap-label.selected span { outline: 2px solid #1d1d1b; font-weight: 700; }
-  .leaflet-marker-icon.tmap-label { cursor: pointer; }
+  /* Region labels: a pill in the rating's colors, joined to its region by a thin leader line */
+  .leaflet-marker-icon.tmap-label { background: none; border: 0; cursor: pointer; }
   .tmap-label span {
     display: inline-block; transform: translate(-50%, -50%); white-space: nowrap;
-    background: rgba(255, 255, 255, 0.92); color: #1d1d1b; border-radius: 4px; padding: 2px 6px;
-    font: 600 12px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    border: 1.5px solid rgba(29, 29, 27, 0.55); border-radius: 999px; padding: 2px 9px;
+    font: 600 12.5px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   }
+  .tmap-label.selected span { border: 2.5px solid #1d1d1b; font-weight: 700; }
   .tmap-card {
     position: absolute; top: 10px; right: 10px; z-index: 1000; width: 300px; max-width: calc(100% - 20px);
     background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 10px;
@@ -275,7 +275,7 @@
     .trail-table { display: none; }
     .trail-mobile { display: block; }
     h1 { font-size: 1.35rem; }
-    #trail-map { height: 420px; }
+    #trail-map { height: 70vh; min-height: 420px; max-height: 640px; }  /* room for the labels; leaves part of the screen to scroll with */
     .tmap-card { position: static; width: auto; max-width: none; margin: 8px 0 0; box-shadow: none; }  /* below the map on phones */
     .chart-box { height: 260px; }
     .chart-box.forecast-box { height: 290px; }
@@ -2041,36 +2041,96 @@ function interiorPoint(best) {
   return pick || [(y0 + y1) / 2, (x0 + x1) / 2];
 }
 
-// One label per region: "Region · Rating", inside one of its larger shapes. If it overlaps another label or leaves the
-// map, try the region's other places, then the short name, then hide it (regions in TRAIL.REGIONS order keep theirs
-// first). Rerun on zoom, resize and sport change.
+// One label per region: a pill with its name and rating word, in open space near the region (over the ocean or the
+// bay where possible), joined to the region by a leader line. Pills never overlap each other, any shape, the zoom
+// buttons or the attribution, and a leader line never crosses another pill; if a full name can't fit, the short name
+// is used. Every order of placing the four pills is tried and the layout with the shortest leader lines wins. Rerun on
+// zoom, pan, resize, sport change and selection.
 function placeTrailMapLabels() {
   const map = tmap.map;
-  if (!map) return;
-  const box = map.getContainer().getBoundingClientRect();
-  const placed = [];
-  const fits = r => r.left >= box.left + 4 && r.right <= box.right - 4 && r.top >= box.top + 4 && r.bottom <= box.bottom - 4 &&
-    placed.every(q => r.right + 4 <= q.left || q.right + 4 <= r.left || r.bottom + 2 <= q.top || q.bottom + 2 <= r.top);
-  // The selected region's label is placed first, so it is never the one hidden.
-  const order = [...tmap.labels].sort((a, b) => (b.region.id === state.trailRegion) - (a.region.id === state.trailRegion));
-  for (const { region, marker, points } of order) {
-    const span = marker.getElement().querySelector("span");
-    const selected = region.id === state.trailRegion;
-    marker.getElement().classList.toggle("selected", selected);
-    const word = regionRating(region.id, tmap.sport).word + (selected ? " · selected" : "");
-    let shown = false;
-    for (const text of [`${region.name} · ${word}`, `${TMAP_SHORT[region.id] || region.name} · ${word}`]) {
+  if (!map || !tmap.labels.length) return;
+  const size = map.getSize(), cbox = map.getContainer().getBoundingClientRect();
+  const M = 6;  // px kept from the map's edges and between pills
+  const pt = ll => map.latLngToContainerPoint(ll);
+  // Obstacles: every shape's piece (its box on screen), the zoom buttons and the attribution.
+  const shapes = tmap.pieceBoxes.map(b => { const a = pt([b[1], b[0]]), c = pt([b[3], b[2]]); return { x1: Math.min(a.x, c.x) - 3, y1: Math.min(a.y, c.y) - 3, x2: Math.max(a.x, c.x) + 3, y2: Math.max(a.y, c.y) + 3, region: b[4] }; });
+  const controls = [...map.getContainer().querySelectorAll(".leaflet-control-zoom, .leaflet-control-attribution")].map(e => {
+    const r = e.getBoundingClientRect(); return { x1: r.left - cbox.left - 4, y1: r.top - cbox.top - 4, x2: r.right - cbox.left + 4, y2: r.bottom - cbox.top + 4 };
+  });
+  const hit = (a, b) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2;
+  const area = (a, b) => Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
+  const nearest = (r, p) => ({ x: Math.max(r.x1, Math.min(p.x, r.x2)), y: Math.max(r.y1, Math.min(p.y, r.y2)) });
+  const segHitsRect = (p, q, r) => {  // does the segment p-q cross rectangle r? (sampled finely enough for a few hundred px)
+    for (let k = 0; k <= 40; k++) { const x = p.x + (q.x - p.x) * k / 40, y = p.y + (q.y - p.y) * k / 40; if (x > r.x1 && x < r.x2 && y > r.y1 && y < r.y2) return true; }
+    return false;
+  };
+  // Each label's text, size and candidate places, best first.
+  const items = tmap.labels.map(l => {
+    const { word } = regionRating(l.region.id, tmap.sport);
+    const selected = l.region.id === state.trailRegion;
+    l.marker.getElement().classList.toggle("selected", selected);
+    const span = l.marker.getElement().querySelector("span");
+    const { rating } = regionRating(l.region.id, tmap.sport);
+    span.style.background = rating == null ? css("--tile-bg") : css(`--r${rating}-bg`);  // no rating: the page's neutral tile colors
+    span.style.color = rating == null ? css("--text") : css(`--r${rating}-fg`);
+    span.setAttribute("aria-hidden", "true");
+    const texts = [`${l.region.name} · ${word}`, `${TMAP_SHORT[l.region.id] || l.region.name} · ${word}`].map(t => (selected ? "✓ " : "") + t);
+    const anchor = pt(l.anchor);
+    const variants = texts.map(text => {
       span.textContent = text;
-      span.style.visibility = "";
-      for (const at of points) {
-        marker.setLatLng(at);
-        const r = span.getBoundingClientRect();
-        if (fits(r)) { placed.push(r); shown = true; break; }
+      const r = span.getBoundingClientRect(), w = r.width, h = r.height;
+      const cands = [];
+      for (let y = M; y + h <= size.y - M; y += 8) for (let x = M; x + w <= size.x - M; x += 8) {
+        const box = { x1: x, y1: y, x2: x + w, y2: y + h };
+        if (controls.some(c => hit(box, c))) continue;
+        const over = shapes.reduce((s, b) => s + area(box, b), 0);
+        const n = nearest(box, anchor), d = Math.hypot(n.x - anchor.x, n.y - anchor.y);
+        // A leader line across another region's shapes is confusing: each such piece costs as much as 120 px of line.
+        const crossed = shapes.filter(b => b.region !== l.region.id && b.x2 - b.x1 > 8 && segHitsRect(anchor, n, b)).length;
+        cands.push({ box, text, cost: d + (d < 14 ? 40 : 0) + over * 50 + crossed * 120 });
       }
-      if (shown) break;
+      cands.sort((a, b) => a.cost - b.cost);
+      return { text, cands: cands.slice(0, 160), clean: cands.filter(c => c.cost < 1e6 && shapes.every(b => !hit(c.box, b))).length > 0 };
+    });
+    return { l, anchor, variants };
+  });
+  const tryLayout = useShort => {
+    let best = null;
+    const perms = a => (a.length <= 1 ? [a] : a.flatMap((x, i) => perms([...a.slice(0, i), ...a.slice(i + 1)]).map(p => [x, ...p])));
+    for (const order of perms(items.map((_, i) => i))) {
+      const chosen = new Array(items.length); let total = 0, ok = true;
+      for (const i of order) {
+        const it = items[i], v = it.variants[useShort[i] ? 1 : 0];
+        const pick = v.cands.find(c => chosen.every((o, j) => !o || (!hit({ x1: c.box.x1 - M, y1: c.box.y1 - M, x2: c.box.x2 + M, y2: c.box.y2 + M }, o.box) &&
+          !segHitsRect(it.anchor, nearest(c.box, it.anchor), o.box) && !segHitsRect(items[j].anchor, nearest(o.box, items[j].anchor), c.box))));
+        if (!pick) { ok = false; break; }
+        chosen[i] = pick; total += pick.cost;
+      }
+      if (ok && (!best || total < best.total)) best = { total, chosen };
     }
-    if (!shown) span.style.visibility = "hidden";
+    return best;
+  };
+  // Full names first; a region whose best place still touches a shape switches to its short name.
+  const useShort = items.map(() => false);
+  let layout = tryLayout(useShort);
+  for (let round = 0; round < 2 && layout; round++) {
+    const touching = layout.chosen.map((c, i) => !useShort[i] && shapes.some(b => hit(c.box, b)));
+    if (!touching.some(Boolean)) break;
+    touching.forEach((t, i) => { if (t && items[i].variants[1]) useShort[i] = true; });
+    layout = tryLayout(useShort) || layout;
   }
+  if (!layout) layout = tryLayout(items.map(() => true));  // last resort: short names everywhere
+  items.forEach((it, i) => {
+    const span = it.l.marker.getElement().querySelector("span");
+    const c = layout ? layout.chosen[i] : null;
+    if (!c) { span.textContent = it.variants[1].text; it.l.marker.setLatLng(it.l.anchor); it.l.line.setLatLngs([]); return; }
+    span.textContent = c.text;
+    it.l.marker.setLatLng(map.containerPointToLatLng([(c.box.x1 + c.box.x2) / 2, (c.box.y1 + c.box.y2) / 2]));
+    const end = nearest(c.box, it.anchor);
+    it.l.line.setLatLngs([it.l.anchor, map.containerPointToLatLng([end.x, end.y])]);
+    it.l.dot.setLatLng(it.l.anchor);
+    it.l.placed = { box: c.box, text: c.text };
+  });
 }
 
 function tmapPlaces(regionId) {
@@ -2213,13 +2273,25 @@ async function renderTrailMap() {
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeTrailMapCard(true); });
   map.on("click", () => closeTrailMapCard(false));  // tapping the map outside the shapes closes the card
 
+  // Boxes (lon/lat) of every separate piece of every shape: what the labels keep clear of.
+  tmap.pieceBoxes = [];
+  for (const f of tmap.features) {
+    for (const poly of f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates) {
+      const xs = poly[0].map(q => q[0]), ys = poly[0].map(q => q[1]);
+      tmap.pieceBoxes.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys), f.properties.region]);
+    }
+  }
+  map.createPane("tmapLeaders").style.zIndex = 450;  // leader lines above the shapes, below the labels
   for (const region of TRAIL.REGIONS) {
     const points = regionLabelPoints(region.id);
     if (!points.length) continue;
-    const marker = L.marker(points[0], { icon: L.divIcon({ className: "tmap-label", html: "<span></span>", iconSize: [0, 0] }),
-                                         keyboard: false }).addTo(map);
+    const anchor = points[0];  // a point well inside the region's largest shape
+    const line = L.polyline([], { pane: "tmapLeaders", color: "#1d1d1b", weight: 1.5, opacity: 0.8, interactive: false }).addTo(map);
+    const dot = L.circleMarker(anchor, { pane: "tmapLeaders", radius: 3, color: "#1d1d1b", weight: 1, fillColor: "#ffffff", fillOpacity: 1, interactive: false }).addTo(map);
+    const marker = L.marker(anchor, { icon: L.divIcon({ className: "tmap-label", html: "<span></span>", iconSize: [0, 0] }),
+                                      keyboard: false }).addTo(map);
     marker.on("click", () => { selectRegion(region.id); showTrailMapCard(region.id, true); });  // a label selects its region too
-    tmap.labels.push({ region, marker, points });
+    tmap.labels.push({ region, marker, line, dot, anchor });
   }
   restyleTrailMap();
   requestAnimationFrame(() => requestAnimationFrame(placeTrailMapLabels));  // again once the page layout has settled
