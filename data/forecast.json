@@ -9,7 +9,7 @@
   "periods lists the forecast periods counted for each day, as NWS gave them (converted from mm to inches)."
  ],
  "time_zone": "America/Los_Angeles",
- "fetched_at": "2026-11-20T11:05:48-08:00",
+ "fetched_at": "2026-11-20T12:07:16-08:00",
  "gauges": {
   "6121": {
    "name": "Mountain View",
@@ -19,7 +19,7 @@
     "y": 86
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -256,7 +256,7 @@
     "y": 83
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -493,7 +493,7 @@
     "y": 81
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -730,7 +730,7 @@
     "y": 84
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -966,39 +966,33 @@
     "x": 93,
     "y": 89
    },
-   "nws_updated": "2026-11-20T15:57:53+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "nws_updated": "2026-11-20T18:27:03+00:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
-     "rain_in": 0.13,
+     "rain_in": 0.17,
      "complete": false,
-     "hours_covered": 23.0,
-     "chance_max_pct": 87,
+     "hours_covered": 20.0,
+     "chance_max_pct": 88,
      "periods": [
-      {
-       "start": "2026-11-20T01:00-08:00",
-       "hours": 3.0,
-       "rain_in": 0.01,
-       "apparent_temp_f": 44.3
-      },
       {
        "start": "2026-11-20T04:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.12,
-       "apparent_temp_f": 45.7
+       "rain_in": 0.14,
+       "apparent_temp_f": 45.5
       },
       {
        "start": "2026-11-20T10:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 56.2
+       "rain_in": 0.03,
+       "apparent_temp_f": 55.5
       },
       {
        "start": "2026-11-20T16:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 51.3
+       "apparent_temp_f": 51.5
       }
      ]
     },
@@ -1007,64 +1001,64 @@
      "rain_in": 0.02,
      "complete": true,
      "hours_covered": 24.0,
-     "chance_max_pct": 71,
+     "chance_max_pct": 70,
      "periods": [
       {
        "start": "2026-11-20T22:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 42.3
+       "apparent_temp_f": 43.2
       },
       {
        "start": "2026-11-21T04:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 40.8
+       "apparent_temp_f": 42.0
       },
       {
        "start": "2026-11-21T10:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 55.5
+       "apparent_temp_f": 55.0
       },
       {
        "start": "2026-11-21T16:00-08:00",
        "hours": 6.0,
        "rain_in": 0.02,
-       "apparent_temp_f": 53.0
+       "apparent_temp_f": 53.7
       }
      ]
     },
     {
      "date": "2026-11-22",
-     "rain_in": 0.05,
+     "rain_in": 0.1,
      "complete": true,
      "hours_covered": 24.0,
-     "chance_max_pct": 71,
+     "chance_max_pct": 51,
      "periods": [
       {
        "start": "2026-11-21T22:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.01,
-       "apparent_temp_f": 47.3
+       "rain_in": 0.04,
+       "apparent_temp_f": 48.8
       },
       {
        "start": "2026-11-22T04:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.01,
-       "apparent_temp_f": 47.3
+       "rain_in": 0.02,
+       "apparent_temp_f": 48.7
       },
       {
        "start": "2026-11-22T10:00-08:00",
        "hours": 6.0,
        "rain_in": 0.02,
-       "apparent_temp_f": 54.3
+       "apparent_temp_f": 54.8
       },
       {
        "start": "2026-11-22T16:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.01,
-       "apparent_temp_f": 51.3
+       "rain_in": 0.02,
+       "apparent_temp_f": 51.2
       }
      ]
     },
@@ -1073,97 +1067,97 @@
      "rain_in": 0.0,
      "complete": true,
      "hours_covered": 24.0,
-     "chance_max_pct": 6,
+     "chance_max_pct": 3,
      "periods": [
       {
        "start": "2026-11-22T22:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 43.5
+       "apparent_temp_f": 43.8
       },
       {
        "start": "2026-11-23T04:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 43.5
+       "apparent_temp_f": 43.0
       },
       {
        "start": "2026-11-23T10:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 57.3
+       "apparent_temp_f": 56.5
       },
       {
        "start": "2026-11-23T16:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 52.7
+       "apparent_temp_f": 53.8
       }
      ]
     },
     {
      "date": "2026-11-24",
-     "rain_in": 0.61,
+     "rain_in": 0.25,
      "complete": true,
      "hours_covered": 24.0,
-     "chance_max_pct": 82,
+     "chance_max_pct": 80,
      "periods": [
       {
        "start": "2026-11-23T22:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 42.3
+       "apparent_temp_f": 43.0
       },
       {
        "start": "2026-11-24T04:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.01,
-       "apparent_temp_f": 44.7
+       "rain_in": 0.0,
+       "apparent_temp_f": 46.3
       },
       {
        "start": "2026-11-24T10:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.2,
-       "apparent_temp_f": 59.3
+       "rain_in": 0.09,
+       "apparent_temp_f": 59.7
       },
       {
        "start": "2026-11-24T16:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.4,
-       "apparent_temp_f": 56.7
+       "rain_in": 0.16,
+       "apparent_temp_f": 58.0
       }
      ]
     },
     {
      "date": "2026-11-25",
-     "rain_in": 0.29,
+     "rain_in": 0.4,
      "complete": true,
      "hours_covered": 24.0,
-     "chance_max_pct": 82,
+     "chance_max_pct": 80,
      "periods": [
       {
        "start": "2026-11-24T22:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.25,
-       "apparent_temp_f": 52.5
+       "rain_in": 0.16,
+       "apparent_temp_f": 53.7
       },
       {
        "start": "2026-11-25T04:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.03,
-       "apparent_temp_f": 50.8
+       "rain_in": 0.19,
+       "apparent_temp_f": 54.0
       },
       {
        "start": "2026-11-25T10:00-08:00",
        "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 61.5
+       "rain_in": 0.04,
+       "apparent_temp_f": 60.8
       },
       {
        "start": "2026-11-25T16:00-08:00",
        "hours": 6.0,
        "rain_in": 0.01,
-       "apparent_temp_f": 57.7
+       "apparent_temp_f": 57.3
       }
      ]
     },
@@ -1184,19 +1178,19 @@
        "start": "2026-11-26T04:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 50.7
+       "apparent_temp_f": 51.0
       },
       {
        "start": "2026-11-26T10:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 61.8
+       "apparent_temp_f": 61.7
       },
       {
        "start": "2026-11-26T16:00-08:00",
        "hours": 6.0,
        "rain_in": 0.0,
-       "apparent_temp_f": 57.8
+       "apparent_temp_f": 57.5
       }
      ]
     }
@@ -1210,7 +1204,7 @@
     "y": 83
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -1447,7 +1441,7 @@
     "y": 85
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -1684,7 +1678,7 @@
     "y": 85
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -1921,7 +1915,7 @@
     "y": 84
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -2158,7 +2152,7 @@
     "y": 86
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -2395,7 +2389,7 @@
     "y": 88
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -2632,7 +2626,7 @@
     "y": 89
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -2869,7 +2863,7 @@
     "y": 76
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -3106,7 +3100,7 @@
     "y": 74
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -3343,7 +3337,7 @@
     "y": 74
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -3580,7 +3574,7 @@
     "y": 74
    },
    "nws_updated": "2026-11-20T18:27:03+00:00",
-   "fetched_at": "2026-11-20T11:05:48-08:00",
+   "fetched_at": "2026-11-20T12:07:16-08:00",
    "days": [
     {
      "date": "2026-11-20",
@@ -3810,6 +3804,6 @@
    ]
   }
  },
- "checked_at": "2026-11-20T11:05:48-08:00",
+ "checked_at": "2026-11-20T12:07:16-08:00",
  "last_error": null
 }
