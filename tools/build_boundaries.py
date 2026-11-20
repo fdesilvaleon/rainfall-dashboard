@@ -254,13 +254,16 @@ CUT_LINES = {
         "drop": (-122.1700, 37.3200),  # Monte Bello preserve
     },
     "Foothill Boulevard": {
-        "filter": 'way["highway"~"^(trunk|primary|secondary|tertiary)(_link)?$"]["name"~"^Foothill Boulevard$"]',
+        "filter": 'way["highway"]["name"~"Foothill Bl",i]',  # any road named Foothill Boulevard/Blvd (paths dropped below)
         "area": (37.26, -122.15, 37.37, -121.95),
         "extend": ("north", "south"),  # carried straight north and south from its ends
         "keep": (-122.0293, 37.3197),  # Cupertino city hall
         "drop": (-122.0900, 37.3150),  # hills west of Cupertino
     },
 }
+
+
+NOT_ROADS = {"footway", "cycleway", "path", "pedestrian", "steps", "track", "service", "bridleway", "construction", "proposed"}
 
 
 def east_of(line_id, cache):
@@ -271,7 +274,7 @@ def east_of(line_id, cache):
     s, w, n, e = cfg["area"]
     q = f'[out:json][timeout:120];{cfg["filter"]}({s},{w},{n},{e});out geom;'
     name = "overpass_" + re.sub(r"\W+", "_", line_id.lower()).strip("_") + ".json"
-    els = overpass(q, cache, name)["elements"]
+    els = [el for el in overpass(q, cache, name)["elements"] if el.get("tags", {}).get("highway") not in NOT_ROADS]
     lines = [LineString([(p["lon"], p["lat"]) for p in el["geometry"]]) for el in els if len(el.get("geometry", [])) > 1]
     if not lines:
         raise RuntimeError(f"{line_id}: not found in OpenStreetMap")
@@ -287,7 +290,8 @@ def east_of(line_id, cache):
         raise RuntimeError(f"couldn't separate the two sides of {line_id} (the road line has a gap?)")
     lats = [y for _, y in pts]
     ext = ", ".join(f"{d} from {ends[d][1]:.4f},{ends[d][0]:.4f}" for d in cfg["extend"])
-    return east, f"{line_id}: {len(els)} OpenStreetMap ways, latitude {min(lats):.3f} to {max(lats):.3f}; carried on {ext}"
+    kinds = sorted({f"{el['tags'].get('name')} ({el['tags'].get('highway')})" for el in els})
+    return east, f"{line_id}: {len(els)} OpenStreetMap ways [{'; '.join(kinds)[:300]}], latitude {min(lats):.3f} to {max(lats):.3f}; carried on {ext}"
 
 
 def build_cities(cfg, cache, report, park_geoms=None, trim=True):
