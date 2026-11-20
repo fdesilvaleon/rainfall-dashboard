@@ -47,6 +47,8 @@ OVERPASS = "https://overpass-api.de/api/interpreter"
 CENSUS_YEAR = 2025
 CENSUS_ZIP = f"https://www2.census.gov/geo/tiger/GENZ{CENSUS_YEAR}/shp/cb_{CENSUS_YEAR}_06_place_500k.zip"
 AREA = (37.05, -122.45, 37.55, -121.60)  # south, west, north, east: where to look for parks
+I280_AREA = (37.15, -122.35, 37.55, -121.85)  # where to fetch Interstate 280
+MIN_PIECE_KM2 = 0.05                          # trimmed city pieces smaller than this (5 ha) are dropped as slivers
 SIMPLIFY_M = 20                          # simplification tolerance in metres
 DECIMALS = 5                             # about 1 m
 
@@ -194,21 +196,70 @@ def build_parks(cfg, cache, report):
 
 # ---------- cities (US Census) ----------
 
-def build_cities(cfg, cache, report):
+def census_city_limits(cfg, cache):
+    """The full (untrimmed) city limits from the Census file: {name: (geometry, Census record, file name)}."""
     z = zipfile.ZipFile(io.BytesIO(download(CENSUS_ZIP, cache, Path(CENSUS_ZIP).name)))
     base = next(n for n in z.namelist() if n.endswith(".shp"))[:-4]
     reader = shapefile.Reader(shp=io.BytesIO(z.read(base + ".shp")), dbf=io.BytesIO(z.read(base + ".dbf")),
                               shx=io.BytesIO(z.read(base + ".shx")))
     by_id = {rec["GEOID"]: (rec, shp) for rec, shp in zip(reader.records(), reader.shapes())}
-    features = []
+    out = {}
     for city in cfg["cities"]:
         rec, shp = by_id.get(city["census_geoid"], (None, None))
-        if rec is None:
+        if rec is not None:
+            out[city["name"]] = (shape(shp.__geo_interface__).buffer(0), rec, base)
+    return out
+
+
+def east_of_280(cache):
+    """The area east of Interstate 280 (the bay side), from the motorway's two carriageways in OpenStreetMap.
+    Each carriageway is closed into an area with lines out to the east; a place must be east of both."""
+    s, w, n, e = I280_AREA
+    q = f'[out:json][timeout:120];way["highway"="motorway"]["ref"~"(^|;)I 280($|;)"]({s},{w},{n},{e});out geom;'
+    els = json.loads(download(OVERPASS, cache, "overpass_i280.json", data={"data": q}))["elements"]
+    lines = [LineString([(p["lon"], p["lat"]) for p in el["geometry"]]) for el in els if len(el.get("geometry", [])) > 1]
+    merged = linemerge(lines)
+    parts = sorted(getattr(merged, "geoms", [merged]), key=lambda g: g.length, reverse=True)[:2]
+    areas = []
+    for line in parts:
+        pts = list(line.coords)
+        if pts[0][1] < pts[-1][1]:
+            pts.reverse()  # start at the north end
+        (x0, y0), (x1, y1) = pts[0], pts[-1]
+        far_east, far_north = -121.0, 38.0
+        areas.append(Polygon(pts + [(far_east, y1), (far_east, far_north), (x0, far_north)]).buffer(0))
+    east = areas[0].intersection(areas[1]) if len(areas) == 2 else areas[0]
+    lats = [y for line in parts for _, y in line.coords]
+    return east, f"{len(els)} I-280 motorway ways, {len(parts)} carriageways, latitude {min(lats):.3f} to {max(lats):.3f}"
+
+
+def build_cities(cfg, cache, report, park_geoms=None, trim=True):
+    """City limits. With trim: only the part east of I-280, minus every park, and without slivers under MIN_PIECE_KM2."""
+    limits = census_city_limits(cfg, cache)
+    east = None
+    if trim:
+        if not park_geoms:
+            raise RuntimeError("the parks are needed to trim the cities, and they weren't built")
+        east, info = east_of_280(cache)
+        report.append({"kind": "note", "text": info})
+        parks_all = unary_union(list(park_geoms.values()))
+    features = []
+    for city in cfg["cities"]:
+        if city["name"] not in limits:
             report.append({"kind": "city", "name": city["name"], "region": city["region"], "matched": None})
             continue
-        geom = clean(shape(shp.__geo_interface__), tolerance=SIMPLIFY_M)
-        features.append(feature(city, geom, f"US Census Bureau {CENSUS_YEAR} cartographic boundary file ({base}), GEOID {rec['GEOID']}"))
-        report.append({"kind": "city", "name": city["name"], "region": city["region"], "matched": rec["NAMELSAD"], "geom": geom})
+        full, rec, base = limits[city["name"]]
+        source = f"US Census Bureau {CENSUS_YEAR} cartographic boundary file ({base}), GEOID {rec['GEOID']}"
+        geom = full
+        if trim:
+            geom = full.intersection(east).difference(parks_all)
+            keep = [p for p in getattr(geom, "geoms", [geom]) if p.geom_type == "Polygon" and area_km2(p) >= MIN_PIECE_KM2]
+            geom = unary_union(keep)
+            source += "; trimmed to east of I-280 and without parks, using OpenStreetMap data"
+        geom = clean(geom)
+        features.append(feature(city, geom, source))
+        report.append({"kind": "city", "name": city["name"], "region": city["region"], "matched": rec["NAMELSAD"],
+                       "geom": geom, "full_km2": area_km2(full)})
     return features
 
 
@@ -234,14 +285,20 @@ def distance_km(geom, lat, lon):
 def print_report(report, gauges):
     print(f"\n{'name':38} {'region':9} {'matched as':42} {'km2':>7} pieces  nearest gauge")
     for r in report:
+        if r.get("kind") == "note":
+            continue
         if not r.get("matched"):
             print(f"{r['name']:38} {r['region']:9} NOT MATCHED" + (f"  (similar names: {r['candidates']})" if r.get("candidates") else ""))
             continue
         g = r["geom"]
         near = min(((distance_km(g, float(x["lat"]), float(x["lon"])), x) for x in gauges), key=lambda t: t[0])
         print(f"{r['name']:38} {r['region']:9} {r['matched'][:42]:42} {area_km2(g):7.2f} {pieces(g):6}  "
-              f"{near[1]['id']} {near[1]['name']} ({near[0]:.1f} km{', inside' if near[0] == 0 else ''})")
+              f"{near[1]['id']} {near[1]['name']} ({near[0]:.1f} km{', inside' if near[0] == 0 else ''})"
+              + (f"  [full city limits {r['full_km2']:.2f} km2]" if r.get("full_km2") else ""))
     # Overlaps: a park inside a city (valley region), or touching a park of another region.
+    for r in report:
+        if r.get("kind") == "note":
+            print(r["text"])
     done = [r for r in report if r.get("matched")]
     print("\nOverlaps between regions (over 1% of the smaller shape), and parks of different regions within 100 m:")
     any_found = False
@@ -265,6 +322,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--only", choices=["parks", "cities"])
     parser.add_argument("--cache-dir", help="save downloads here and reuse them")
+    parser.add_argument("--untrimmed", action="store_true", help="write the full city limits (not trimmed to east of I-280)")
     args = parser.parse_args()
     cfg = json.loads(REGIONS.read_text())
     ids = {r["id"] for r in cfg["regions"]}
@@ -274,20 +332,34 @@ def main():
     with open(GAUGES, newline="") as f:
         gauges = list(csv.DictReader(f))
     report, failed = [], False
-    for kind, build, out, note in [
-        ("cities", build_cities, CITIES_OUT, f"City limits for the trail-region map. Source: US Census Bureau {CENSUS_YEAR} cartographic boundary files (public domain). Built by tools/build_boundaries.py; simplified to about {SIMPLIFY_M} m."),
-        ("parks", build_parks, PARKS_OUT, f"Park boundaries for the trail-region map. Source: (c) OpenStreetMap contributors, ODbL 1.0 (openstreetmap.org/copyright). Built by tools/build_boundaries.py; simplified to about {SIMPLIFY_M} m."),
-    ]:
-        if args.only and args.only != kind:
-            continue
+    city_note = (f"City limits for the trail-region map: the part east of Interstate 280, without parks. Sources: US Census Bureau "
+                 f"{CENSUS_YEAR} cartographic boundary files (public domain); I-280 and park outlines (c) OpenStreetMap contributors, "
+                 f"ODbL 1.0 (openstreetmap.org/copyright). Built by tools/build_boundaries.py; simplified to about {SIMPLIFY_M} m.")
+    if args.untrimmed:
+        city_note = (f"City limits (untrimmed) for the trail-region map. Source: US Census Bureau {CENSUS_YEAR} cartographic boundary "
+                     f"files (public domain). Built by tools/build_boundaries.py --untrimmed; simplified to about {SIMPLIFY_M} m.")
+    park_note = (f"Park boundaries for the trail-region map. Source: (c) OpenStreetMap contributors, ODbL 1.0 "
+                 f"(openstreetmap.org/copyright). Built by tools/build_boundaries.py; simplified to about {SIMPLIFY_M} m.")
+    park_geoms = None
+    # Parks first: the cities are trimmed with them.
+    if args.only != "cities" or not args.untrimmed:
         try:
-            features = build(cfg, args.cache_dir, report)
+            features = build_parks(cfg, args.cache_dir, report)
+            park_geoms = {r["name"]: r["geom"] for r in report if r.get("kind") == "park" and r.get("geom") is not None}
+            if args.only != "cities":
+                size = write_collection(PARKS_OUT, features, park_note)
+                print(f"Wrote {PARKS_OUT.relative_to(ROOT)}: {len(features)} features, {size / 1024:.0f} KB")
         except Exception as e:
-            print(f"{kind}: FAILED to download or build ({e}); {out.name} left unchanged", file=sys.stderr)
+            print(f"parks: FAILED to download or build ({e}); {PARKS_OUT.name} left unchanged", file=sys.stderr)
             failed = True
-            continue
-        size = write_collection(out, features, note)
-        print(f"Wrote {out.relative_to(ROOT)}: {len(features)} features, {size / 1024:.0f} KB")
+    if args.only != "parks":
+        try:
+            features = build_cities(cfg, args.cache_dir, report, park_geoms, trim=not args.untrimmed)
+            size = write_collection(CITIES_OUT, features, city_note)
+            print(f"Wrote {CITIES_OUT.relative_to(ROOT)}: {len(features)} features, {size / 1024:.0f} KB")
+        except Exception as e:
+            print(f"cities: FAILED to download or build ({e}); {CITIES_OUT.name} left unchanged", file=sys.stderr)
+            failed = True
     print_report(report, gauges)
     if failed:
         sys.exit(1)
