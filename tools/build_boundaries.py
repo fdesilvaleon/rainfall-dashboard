@@ -285,10 +285,14 @@ def east_of(line_id, cache):
     lines = [LineString([(p["lon"], p["lat"]) for p in el["geometry"]]) for el in els if len(el.get("geometry", [])) > 1]
     if not lines:
         # Say what is there, to fix the filter.
-        q2 = f'[out:json][timeout:60];way["name"~"Foothill",i]({s},{w},{n},{e});out tags center;'
-        seen = sorted({(el.get("tags", {}).get("name"), el.get("tags", {}).get("highway"), round(el.get("center", {}).get("lat", 0), 3),
-                        round(el.get("center", {}).get("lon", 0), 3)) for el in overpass(q2, None, "foothill_names")["elements"]})
-        raise RuntimeError(f"{line_id}: not found in OpenStreetMap. Ways named like Foothill here: {seen[:40]}")
+        q2 = f'[out:json][timeout:60];way["highway"]["name"~"Foothill|Stevens Canyon",i]({s},{w},{n},{e});out tags center;'
+        roads = {}
+        for el in overpass(q2, None, "foothill_names")["elements"]:
+            key = (el["tags"].get("name"), el["tags"].get("highway"))
+            roads.setdefault(key, []).append((el.get("center", {}).get("lat", 0), el.get("center", {}).get("lon", 0)))
+        seen = [f"{k[0]} ({k[1]}): {len(v)} ways, lat {min(p[0] for p in v):.3f}-{max(p[0] for p in v):.3f}, "
+                f"lon {min(p[1] for p in v):.3f}-{max(p[1] for p in v):.3f}" for k, v in sorted(roads.items(), key=lambda kv: str(kv[0]))]
+        raise RuntimeError(f"{line_id}: not found in OpenStreetMap. Roads named like it here: " + " | ".join(seen))
     pts = [pt for line in lines for pt in line.coords]
     ends = {"north": max(pts, key=lambda p: p[1]), "south": min(pts, key=lambda p: p[1]), "east": max(pts, key=lambda p: p[0])}
     to_edge = {"north": lambda p: (p[0], n + 0.1), "south": lambda p: (p[0], s - 0.1), "east": lambda p: (e + 0.1, p[1])}
