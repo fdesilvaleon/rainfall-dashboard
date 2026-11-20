@@ -68,7 +68,14 @@ def overpass(query, cache, name):
     error = None
     for url in [OVERPASS] + OVERPASS_FALLBACKS:
         try:
-            return json.loads(download(url, cache, name, data={"data": query}))
+            data = json.loads(download(url, cache, name, data={"data": query}))
+            remark = data.get("remark") or ""
+            if re.search(r"error|timed out|timeout|out of memory", remark, re.I):
+                # An overloaded server can answer "OK" with an empty result and a note saying it gave up.
+                if cache:
+                    (Path(cache) / name).unlink(missing_ok=True)
+                raise RuntimeError(f"server note: {remark.strip()[:200]}")
+            return data
         except Exception as e:
             error = e
             print(f"{name}: {url} failed ({e})", file=sys.stderr)
