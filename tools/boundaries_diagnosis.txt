@@ -1,0 +1,117 @@
+
+===== OpenStreetMap: every object whose name contains a preserve name, or run by Midpen =====
+osm_candidates: FAILED URLError: <urlopen error [Errno 101] Network is unreachable>
+
+===== OpenStreetMap: Interstate 280 =====
+i280: FAILED URLError: <urlopen error [Errno 101] Network is unreachable>
+
+===== ArcGIS Online: official Midpen boundary data =====
+- Preserve Boundary | type Feature Service | owner GIS_MROSD | id 42acb356e3184bb69cfce0822c0d2c5f
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Preserve_Boundary_(public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Preserve Access | type Feature Service | owner GIS_MROSD | id 29b80534c2c142d99f62834a1323ba33
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Preserve_Access_(public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Preserve Access Measure AA | type Feature Service | owner GIS_MROSD | id 30c8ebb34896472a80e85e3842d0c433
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Preserve_Access_Measure_AA/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Vegetation - Mid Peninsula Open Space [ds997] | type Feature Service | owner BIOS_Admin | id 7f030987cff648118412b5c770433b6a
+    url https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds997_fpu/FeatureServer
+    license: Disclaimer:   The State makes no claims, promises, or guarantees about the accuracy, completeness, reliability, or adequacy of these data and expressly disclaims liability for errors and omissions in these data. No warranty of any kind, implied, expressed, or statutory, including but not limited to the warranties of non-infringement of third party rights, title, merchantability, fitness for a part
+    credits: Casey Hiatt; ; Midpeninsula Regional Open Space District (MROSD); ; ; ; ; ; ;
+- Hiking allowed | type Feature Service | owner GIS_MROSD | id 2867864a98b14fbe9d5d45485ce03973
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Hiking_allowed/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED "AS IS" WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR FITNESS OF
+    credits: Midpen GIS
+- Equestrians allowed | type Feature Service | owner GIS_MROSD | id d78f814f81744ef397f194858f2b4c69
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Equestrians_allowed/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED "AS IS" WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR FITNESS OF
+    credits: Midpen GIS
+- American Badger Corridor Model Midpen 2024 | type Feature Service | owner GIS_MROSD | id 976b162c9aba47bd89150b1a0392d0b5
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/American_Badger_Corridor_Model_Midpen_2024/FeatureServer
+    license: Disclaimer     DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED "AS IS" WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY
+    credits: Midpeninsula Regional Open Space District
+- Trail | type Feature Service | owner GIS_MROSD | id d3b43e2f6ddc4c90b2309edbf425374a
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Trail_(public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Bicycling allowed | type Feature Service | owner GIS_MROSD | id 1a022dfb66e740f2bd595a8aa9f192b4
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Bicycling_allowed/FeatureServer
+    license: (none given)
+    credits: Midpen GIS
+- American Badger Corridor Model - San Mateo - 2024 - Midpen [ds3219] | type Feature Service | owner BIOS_Admin | id 0d654d3f4342456b87d3b60cd6b11738
+    url https://services2.arcgis.com/Uq9r85Potqm3MfRV/arcgis/rest/services/biosds3219_fpu/FeatureServer
+    license: Disclaimer:   The State makes no claims, promises, or guarantees about the accuracy, completeness, reliability, or adequacy of these data and expressly disclaims liability for errors and omissions in these data. No warranty of any kind, implied, expressed, or statutory, including but not limited to the warranties of non-infringement of third party rights, title, merchantability, fitness for a part
+    credits: Nathan Greig; Senior Technologist; Midpeninsula Regional Open Space District; ; ; ; ; ; ngreig@openspace.org;
+- Excessively Steep Trails | type Feature Service | owner GIS_MROSD | id 28df494194254335b5f41621f0d8c17a
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Excessively_Steep_Trails_(View)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Trail (Midpen only) | type Feature Service | owner GIS_MROSD | id f6d084db806c46e0a0653e1d8aa081f4
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Trail_Midpen_Only_(public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Numbered Trail Junctions | type Feature Service | owner GIS_MROSD | id 04876df364c44b429f77d72dd5892e4d
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Trail_Junction_(public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Parking Location | type Feature Service | owner GIS_MROSD | id 5a48a8d6fbd8495f8f50491dc34eceb1
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Parking_Location_(public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Trail Measure AA | type Feature Service | owner GIS_MROSD | id 9358c0dbd0bc487eb1788cf861397cbf
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Trail_Measure_AA/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Midpen Land | type Feature Service | owner GIS_MROSD | id a0e337ab61604575abd25d6e73de92f2
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/MROSD_Land_(public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Restroom | type Feature Service | owner GIS_MROSD | id 2499cd3ca69645529a83cac3d17570ab
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Restroom_(Public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Trail Simplified | type Feature Service | owner GIS_MROSD | id ac39b8a789e34e5a975fdc635a7ca708
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Trail_Simplified_(public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Gate | type Feature Service | owner GIS_MROSD | id 5260c87038f44146ab9b7c9c232d213f
+    url https://services2.arcgis.com/qmhndvC947rDNl6t/arcgis/rest/services/Gate_(public)/FeatureServer
+    license: DISCLAIMER: Midpeninsula Regional Open Space District makes no representation or warranties, express or implied, with respect to the use or reuse of the data provided herewith, regardless of its format or the means of its transmission. THE DATA IS PROVIDED &quot;AS IS&quot; WITH NO GUARANTEE OR REPRESENTATION ABOUT THE ACCURACY, CURRENCY, SUITABILITY, PERFORMANCE, MERCHANTABILITY, RELIABILITY, OR 
+    credits: Midpen GIS
+- Midpen Project Readiness | type Feature Service | owner HANA_GPS | id 2ba05a04a89844f1997385b0c41024d5
+    url https://services8.arcgis.com/Fq5lkcN4m5oc2aZc/arcgis/rest/services/Midpen_Project_Readiness/FeatureServer
+    license: (none given)
+    credits: (none)
+- Planning Office Data Service2 | type Feature Service | owner SCC.Planning.Office | id b1fa77f6e79f4ccbbc34e737e1bc113d
+    url https://services2.arcgis.com/tcv2cMrq63AgvbHF/arcgis/rest/services/PlanningOfficeDataService2/FeatureServer
+    license: There are no Use Constraints. The user must be familiar with GIS software and web maps to use these data. No support on the use of software or webmaps is provided. All information provided herein by the Santa Clara County Department of Planning and Development (SCCDPD) is provided for informational purposes only and does not constitute a legal contract between the SCCDPD and any person or entity. 
+    credits: Santa Clara County Planning Office TeamGIS
+- SOD Map Updated | type Feature Service | owner cmjarvis | id d43671995f8e486ea75499199b18715c
+    url https://services5.arcgis.com/wXYNaciObHUosEnt/arcgis/rest/services/All_Layers_Map_WFL1/FeatureServer
+    license: (none given)
+    credits: (none)
+- Mollic_Veg__MidPen_Intersect | type Feature Service | owner 926708351@sfsu.edu_SFSU | id 426075ad7f9942f395b81d5067a7487c
+    url https://services.arcgis.com/MdapRpkzb0PVHqL1/arcgis/rest/services/Mollic_Veg__MidPen_Intersect/FeatureServer
+    license: (none given)
+    credits: (none)
+- SOD Case Study_WFL1 | type Feature Service | owner cmjarvis | id ef0db3865c2d4dfb8e14b2e75a7b1b6b
+    url https://services5.arcgis.com/wXYNaciObHUosEnt/arcgis/rest/services/SOD_Case_Study_WFL1/FeatureServer
+    license: (none given)
+    credits: (none)
+- Windy Hill with Adjacent Trails from Python_WFL1 | type Feature Service | owner caseylitton_GEOG17 | id 0dc42da17fbc49c4ada1e5034bf2570e
+    url https://services7.arcgis.com/hIQQGB36v28tTMe7/arcgis/rest/services/Windy_Hill_with_Adjacent_Trails_from_Python_WFL1/FeatureServer
+    license: (none given)
+    credits: (none)
+
+===== Midpen website: published acreage =====
+Rancho San Antonio: 130, 16, 2,180, 25, 293, 3,542, 35, 440, 500, 850  (https://www.openspace.org/preserves/rancho-san-antonio)
+Russian Ridge: 3,137  (https://www.openspace.org/preserves/russian-ridge)
+Skyline Ridge: 2,143  (https://www.openspace.org/preserves/skyline-ridge)
+Monte Bello: 3,436  (https://www.openspace.org/preserves/monte-bello)
+Long Ridge: no acreage found  (https://www.openspace.org/preserves/long-ridge)
+Windy Hill: 1,414, 429, 537  (https://www.openspace.org/preserves/windy-hill)
+Los Trancos: 13,300, 274  (https://www.openspace.org/preserves/los-trancos)
