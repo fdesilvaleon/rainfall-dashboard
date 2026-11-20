@@ -366,7 +366,7 @@ script in `index.html`**, so they can be tuned in one place.
 
 ## Boundary data
 
-Park outlines and city limits for the planned trail-region map. These are static
+Park outlines and city areas for the planned trail-region map. These are static
 files: nothing updates them automatically, and the page doesn't use them yet.
 
 - **`data/regions.json`**: the four regions (`foothills` Peninsula foothills,
@@ -374,22 +374,36 @@ files: nothing updates them automatically, and the page doesn't use them yet.
   parks and cities in each, one line per park or city. To move a park to another
   region, change its `"region"` and rebuild.
 - **`data/parks.geojson`**: one feature per park, with properties `name`,
-  `region` and `source` (the OpenStreetMap object it came from). A park in
+  `region` and `source` (the OpenStreetMap objects it came from). A park in
   several separate pieces is one feature with several polygons.
-- **`data/cities.geojson`**: the Valley floor cities, same properties.
+- **`data/cities.geojson`**: the Valley floor cities, same properties. These are
+  **not** the full city limits: each city keeps only the flat part **east of
+  Interstate 280** (the bay side), with every park in `parks.geojson` cut out, and
+  leftover slivers under 5 hectares dropped. Palo Alto and Cupertino, whose city
+  limits reach into the hills, lose the most.
 - **`tools/boundaries_report.txt`**: the report from the last build (what was
-  matched, area, pieces, nearest gauge, overlaps between regions).
+  matched, area, pieces, nearest gauge, full and trimmed city areas, overlaps).
 
 Shapes are simplified to about 20 m and coordinates rounded to 5 decimals (about 1 m).
 
+**Midpen preserves in OpenStreetMap** are mapped as an open part plus separately
+named closed areas (for example "Russian Ridge Open Space Preserve (closed area)",
+and one unnamed area for Monte Bello). The `"also"` list on a park's line in
+`regions.json` merges those pieces in. The results were checked against Midpen's
+official "Preserve Boundary" layer; that layer comes with a warranty disclaimer
+but no license allowing republication, so it is used only for that check, not
+published here.
+
 **Sources, licenses and the attribution to show:**
 
-- **Parks: OpenStreetMap**, through the Overpass API (overpass-api.de). License:
+- **Parks, the I-280 line and the park cut-outs in the city areas: OpenStreetMap**,
+  through the Overpass API. License:
   [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
   Show: **"© OpenStreetMap contributors"**, linked to
   https://www.openstreetmap.org/copyright (the dashboard's map already shows this
-  for its tiles). The ODbL is share-alike: `data/parks.geojson` is a derived
-  database, so it stays under the ODbL, and anyone may reuse it on the same terms.
+  for its tiles). The ODbL is share-alike: `data/parks.geojson` and
+  `data/cities.geojson` are derived databases, so they stay under the ODbL, and
+  anyone may reuse them on the same terms.
 - **City limits: US Census Bureau**, 2025 cartographic boundary file for
   California places (`cb_2025_06_place_500k`, www2.census.gov). Public domain (a
   work of the US government); no attribution is required. Suggested credit:
@@ -398,17 +412,25 @@ Shapes are simplified to about 20 m and coordinates rounded to 5 decimals (about
 **Rebuilding** (by hand, never in the hourly workflow):
 
     pip install shapely pyproj pyshp
-    python tools/build_boundaries.py            # or --only parks / --only cities
+    python tools/build_boundaries.py              # parks, then the trimmed cities
+    python tools/build_boundaries.py --untrimmed  # full city limits instead of the trimmed ones
     python -m unittest test_boundaries
 
-The script makes one request to Overpass for all parks and downloads one Census
+The script makes one Overpass request for the parks and one for I-280 (trying two
+other public Overpass servers if the main one fails), and downloads one Census
 file (`--cache-dir DIR` keeps the downloads and reuses them). Parks are found by
-the names listed under `"match"` in `data/regions.json`; to fix a wrong match,
-add `"osm": "relation/123"` (or `way/123`) to that park's line. The Overpass API
-couldn't be reached from the cloud environment this was built in, so the files
-were built on GitHub's machines by `.github/workflows/build-boundaries.yml`. That
-workflow runs only when the `add-boundaries` branch is pushed with a change to
-the build script or `data/regions.json`, never on `main` and never on a schedule.
+the names under `"match"` in `data/regions.json`; to fix a wrong match, add
+`"osm": "relation/123"` (or `way/123`) to that park's line, and list extra pieces
+under `"also"`.
+
+The Overpass API can't be reached from the cloud environment these files were
+made in, so they were built on GitHub's machines. The workflow that did it is kept
+as **`tools/build-boundaries.workflow.yml`** (GitHub ignores it there, so it never
+runs). To rebuild that way: on a new branch, copy it to
+`.github/workflows/build-boundaries.yml`, change `add-boundaries` in its
+`branches:` line to the new branch's name, and push a change to the build script
+or `regions.json`. It builds the files, commits them and the report to that
+branch, and runs the tests. Delete the workflow file again before merging.
 
 ## Attribution and disclaimer
 
