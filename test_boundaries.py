@@ -87,7 +87,8 @@ class GeoJsonTests(unittest.TestCase):
         self.assertNotIn("build_boundaries", hourly)
         # The boundary workflow runs only on the add-boundaries branch, never on a schedule.
         boundary = (ROOT / ".github" / "workflows" / "build-boundaries.yml").read_text()
-        self.assertNotIn("schedule", boundary)
+        self.assertIsNone(re.search(r"^\s*schedule:", boundary, re.M))
+        self.assertNotIn("workflow_dispatch", boundary)
         self.assertIn("branches: [add-boundaries]", boundary)
 
 

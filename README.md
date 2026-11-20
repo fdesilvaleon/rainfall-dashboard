@@ -364,6 +364,52 @@ isn't there yet, the comfort check is skipped. **All the numbers live in one
 commented block, `TRAIL`, near the top of the trail-conditions part of the
 script in `index.html`**, so they can be tuned in one place.
 
+## Boundary data
+
+Park outlines and city limits for the planned trail-region map. These are static
+files: nothing updates them automatically, and the page doesn't use them yet.
+
+- **`data/regions.json`**: the four regions (`foothills` Peninsula foothills,
+  `skyline` Skyline ridge, `south` South Valley, `valley` Valley floor) and the
+  parks and cities in each, one line per park or city. To move a park to another
+  region, change its `"region"` and rebuild.
+- **`data/parks.geojson`**: one feature per park, with properties `name`,
+  `region` and `source` (the OpenStreetMap object it came from). A park in
+  several separate pieces is one feature with several polygons.
+- **`data/cities.geojson`**: the Valley floor cities, same properties.
+- **`tools/boundaries_report.txt`**: the report from the last build (what was
+  matched, area, pieces, nearest gauge, overlaps between regions).
+
+Shapes are simplified to about 20 m and coordinates rounded to 5 decimals (about 1 m).
+
+**Sources, licenses and the attribution to show:**
+
+- **Parks: OpenStreetMap**, through the Overpass API (overpass-api.de). License:
+  [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
+  Show: **"© OpenStreetMap contributors"**, linked to
+  https://www.openstreetmap.org/copyright (the dashboard's map already shows this
+  for its tiles). The ODbL is share-alike: `data/parks.geojson` is a derived
+  database, so it stays under the ODbL, and anyone may reuse it on the same terms.
+- **City limits: US Census Bureau**, 2025 cartographic boundary file for
+  California places (`cb_2025_06_place_500k`, www2.census.gov). Public domain (a
+  work of the US government); no attribution is required. Suggested credit:
+  "City limits: U.S. Census Bureau, 2025 Cartographic Boundary Files."
+
+**Rebuilding** (by hand, never in the hourly workflow):
+
+    pip install shapely pyproj pyshp
+    python tools/build_boundaries.py            # or --only parks / --only cities
+    python -m unittest test_boundaries
+
+The script makes one request to Overpass for all parks and downloads one Census
+file (`--cache-dir DIR` keeps the downloads and reuses them). Parks are found by
+the names listed under `"match"` in `data/regions.json`; to fix a wrong match,
+add `"osm": "relation/123"` (or `way/123`) to that park's line. The Overpass API
+couldn't be reached from the cloud environment this was built in, so the files
+were built on GitHub's machines by `.github/workflows/build-boundaries.yml`. That
+workflow runs only when the `add-boundaries` branch is pushed with a change to
+the build script or `data/regions.json`, never on `main` and never on a schedule.
+
 ## Attribution and disclaimer
 
 Data: Santa Clara Valley Water ALERT system
