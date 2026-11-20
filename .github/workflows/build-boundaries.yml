@@ -38,7 +38,7 @@ jobs:
         run: |
           mkdir -p downloads
           set +e
-          python tools/build_boundaries.py --cache-dir downloads > tools/boundaries_report.txt 2>&1
+          python -u tools/build_boundaries.py --cache-dir downloads > tools/boundaries_report.txt 2>&1
           echo "BUILD_STATUS=$?" >> "$GITHUB_ENV"
           cat tools/boundaries_report.txt
           { echo '```'; cat tools/boundaries_report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
@@ -47,7 +47,7 @@ jobs:
         timeout-minutes: 10
         run: |
           set +e
-          python tools/diagnose_boundaries.py > tools/boundaries_diagnosis.txt 2>&1
+          python -u tools/diagnose_boundaries.py > tools/boundaries_diagnosis.txt 2>&1
           cat tools/boundaries_diagnosis.txt
       - name: Keep the downloads for checking
         if: always()

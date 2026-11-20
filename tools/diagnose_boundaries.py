@@ -162,23 +162,7 @@ def compare_with_official():
         b = bb.transform(bb.TO_M, b)
         inter, union = a.intersection(b).area, a.union(b).area
         print(f"{name:40} {a.area/1e6:7.2f} {b.area/1e6:8.2f} {acres:6.0f} {inter/union:7.0%} {a.difference(b).area/1e6:9.2f} {b.difference(a).area/1e6:13.2f}")
-    section("Other Midpen-operated OpenStreetMap areas: which official preserve they fall in")
-    s, w, n, e = bb.AREA
-    q = (f'[out:json][timeout:120];(relation["operator"~"Midpeninsula|Midpen",i]["boundary"]({s},{w},{n},{e});'
-         f'way["operator"~"Midpeninsula|Midpen",i]["boundary"]({s},{w},{n},{e}););out geom;')
-    els = bb.overpass(q, None, "diag_midpen")["elements"]
-    used = {f["properties"]["source"] for f in json.loads(bb.PARKS_OUT.read_text())["features"]}
-    for el in els:
-        g = bb.element_geometry(el)
-        if g is None or bb.area_km2(g) < 0.05:
-            continue
-        gm = bb.transform(bb.TO_M, g)
-        best = max(((bb.transform(bb.TO_M, og).intersection(gm).area / gm.area, pres) for pres, (og, _) in official.items()), default=(0, None))
-        if best[0] < 0.2:
-            continue
-        tag = f"{el['type']} {el['id']}"
-        inuse = "already used" if any(tag in u for u in used) else "NOT used"
-        print(f"  {tag:18} {el.get('tags', {}).get('name', '(no name)')[:50]:50} {bb.area_km2(g):6.2f} km2  {best[0]:4.0%} inside official {best[1]}  [{inuse}]")
+    # Pearson-Arastradero is a City of Palo Alto preserve, not in Midpen's layer.
 
 
 if __name__ == "__main__":
