@@ -1,6 +1,11 @@
-overpass_parks.json: HTTP Error 502: Bad Gateway; trying again in 60 seconds
 Wrote data/parks.geojson: 17 features, 38 KB
-Wrote data/cities.geojson: 5 features, 11 KB
+overpass_foothill_boulevard.json: HTTP Error 502: Bad Gateway; trying again in 60 seconds
+overpass_foothill_boulevard.json: https://overpass-api.de/api/interpreter failed (HTTP Error 502: Bad Gateway)
+overpass_foothill_boulevard.json: HTTP Error 504: Gateway Timeout; trying again in 60 seconds
+overpass_foothill_boulevard.json: https://overpass.kumi.systems/api/interpreter failed (HTTP Error 502: Bad Gateway)
+overpass_foothill_boulevard.json: The read operation timed out; trying again in 60 seconds
+overpass_foothill_boulevard.json: https://overpass.private.coffee/api/interpreter failed (The read operation timed out)
+cities: FAILED to download or build (no Overpass server answered (The read operation timed out)); cities.geojson left unchanged
 
 name                                   region    matched as                                     km2 pieces  nearest gauge
 Pearson-Arastradero Preserve           foothills Enid Pearson-Arastradero Preserve             2.66      2  6147 Westwind Community Barn (1.5 km)
@@ -20,12 +25,6 @@ Los Trancos Open Space Preserve        skyline   Los Trancos Open Space Preserve
 Almaden Quicksilver County Park        south     Almaden Quicksilver County Park              16.85      5  6004 Almaden Watershed (0.0 km)
 Calero County Park                     south     Calero County Park                           18.82      8  6128 Calero Watershed (0.0 km)
 Santa Teresa County Park               south     Santa Teresa County Park                      6.77      1  6128 Calero Watershed (4.1 km)
-Palo Alto                              valley    Palo Alto city                               35.73      1  6129 Palo Alto (0.0 km, inside)  [full city limits 62.94 km2]
-Mountain View                          valley    Mountain View city                           31.34      1  6121 Mountain View (0.0 km, inside)  [full city limits 31.35 km2]
-Sunnyvale                              valley    Sunnyvale city                               57.00      1  6048 Sunnyvale Hamilton WTP (0.0 km, inside)  [full city limits 57.16 km2]
-Los Altos                              valley    Los Altos city                               16.63      1  6048 Sunnyvale Hamilton WTP (0.3 km)  [full city limits 16.94 km2]
-Cupertino                              valley    Cupertino city                                2.26      4  6144 Maryknoll Fields (1.3 km)  [full city limits 29.32 km2]
-317 I-280 motorway ways, latitude 37.315 to 37.520; area split into 2 pieces
 
 Overlaps between regions (over 1% of the smaller shape), and parks of different regions within 100 m:
   Foothills Park (foothills) / Los Trancos Open Space Preserve (skyline): 0 m apart
