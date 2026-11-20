@@ -82,15 +82,14 @@ class GeoJsonTests(unittest.TestCase):
             self.assertLess(size, MAX_FILE, name)
         self.assertLess(sum(sizes.values()), MAX_TOTAL)
 
-    def test_build_script_is_not_in_the_hourly_workflow(self):
-        hourly = (ROOT / ".github" / "workflows" / "collect.yml").read_text()
-        self.assertNotIn("build_boundaries", hourly)
-        # The boundary workflow runs only on the add-boundaries branch, never on a schedule.
-        boundary = (ROOT / ".github" / "workflows" / "build-boundaries.yml").read_text()
-        self.assertIsNone(re.search(r"^\s*schedule:", boundary, re.M))
-        self.assertNotIn("workflow_dispatch", boundary)
-        self.assertIn("branches: [add-boundaries]", boundary)
-
+    def test_build_script_is_not_in_any_active_workflow(self):
+        # The boundary data is static: no workflow on this branch builds it.
+        for wf in (ROOT / ".github" / "workflows").glob("*.y*ml"):
+            self.assertNotIn("build_boundaries", wf.read_text(), wf.name)
+        # The kept copy (in tools/, where GitHub ignores it) has no schedule and no run button.
+        template = (ROOT / "tools" / "build-boundaries.workflow.yml").read_text()
+        self.assertIsNone(re.search(r"^\s*schedule:", template, re.M))
+        self.assertNotIn("workflow_dispatch", template)
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,8 @@
+Check of the built Midpen preserve outlines (data/parks.geojson, from OpenStreetMap) against Midpen's official
+'Preserve Boundary' layer (ArcGIS, owner GIS_MROSD), made on GitHub's machines on 2026-11-20 while building.
+The official layer was used only for this check; it is not published in this repository.
+Areas in km2; 'acres' is the official layer's ACRES field; overlap = shared area / combined area.
+The website acreage lines are numbers found on each preserve's page at openspace.org (not all are the preserve size).
 
 ===== Built Midpen outlines compared with Midpen's official Preserve Boundary layer (used only for checking) =====
 park                                        ours official  acres overlap ours only official only

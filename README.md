@@ -383,6 +383,8 @@ files: nothing updates them automatically, and the page doesn't use them yet.
   limits reach into the hills, lose the most.
 - **`tools/boundaries_report.txt`**: the report from the last build (what was
   matched, area, pieces, nearest gauge, full and trimmed city areas, overlaps).
+- **`tools/midpen_comparison.txt`**: the check of the Midpen preserve outlines
+  against Midpen's official boundaries (areas and overlap).
 
 Shapes are simplified to about 20 m and coordinates rounded to 5 decimals (about 1 m).
 
