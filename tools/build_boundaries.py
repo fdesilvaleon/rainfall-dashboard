@@ -34,7 +34,7 @@ import shapefile  # pyshp
 from pyproj import Transformer
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon, mapping, shape
 import shapely
-from shapely.ops import linemerge, polygonize, unary_union
+from shapely.ops import linemerge, polygonize, polygonize_full, unary_union
 
 ROOT = Path(__file__).resolve().parent.parent
 REGIONS = ROOT / "data" / "regions.json"
@@ -131,6 +131,11 @@ def element_geometry(el):
         (inner if m.get("role") == "inner" else outer).append(line)
     if not outer:
         return None
+    # Outline pieces that don't join into closed rings are left out; count them so the report can warn.
+    _, dangles, cuts, invalid = polygonize_full(linemerge(outer))
+    loose = sum(len(getattr(g, "geoms", [])) for g in (dangles, cuts, invalid))
+    if loose:
+        BROKEN.append(f"{el['type']} {el['id']} ({el.get('tags', {}).get('name')}): {loose} outline piece(s) don't close into a ring and were left out")
     shell = unary_union(list(polygonize(linemerge(outer))))
     holes = unary_union(list(polygonize(linemerge(inner)))) if inner else None
     geom = shell.difference(holes) if holes is not None and not holes.is_empty else shell
@@ -139,6 +144,7 @@ def element_geometry(el):
 
 # ---------- parks (OpenStreetMap) ----------
 
+BROKEN = []  # warnings from element_geometry
 PARK_TAGS = {("leisure", "park"), ("leisure", "nature_reserve"), ("boundary", "protected_area"), ("boundary", "national_park")}
 
 
@@ -251,6 +257,8 @@ def print_report(report, gauges):
                 print(f"  {a['name']} ({a['region']}) / {b['name']} ({b['region']}): {what}")
     if not any_found:
         print("  none")
+    print("\nOutline problems:")
+    print("\n".join(f"  {b}" for b in BROKEN) if BROKEN else "  none")
 
 
 def main():

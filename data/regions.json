@@ -13,7 +13,7 @@
   {"id": "valley", "name": "Valley floor"}
  ],
  "parks": [
-  {"name": "Pearson-Arastradero Preserve", "region": "foothills", "match": ["Pearson-Arastradero Preserve", "Arastradero Preserve"]},
+  {"name": "Pearson-Arastradero Preserve", "region": "foothills", "match": ["Enid Pearson-Arastradero Preserve", "Pearson-Arastradero Preserve", "Arastradero Preserve"]},
   {"name": "Foothills Park", "region": "foothills", "match": ["Foothills Nature Preserve", "Foothills Park"]},
   {"name": "Hidden Villa", "region": "foothills", "match": ["Hidden Villa"]},
   {"name": "Rancho San Antonio Open Space Preserve", "region": "foothills", "match": ["Rancho San Antonio Open Space Preserve", "Rancho San Antonio Preserve"]},
