@@ -48,7 +48,28 @@ MANUAL_EXCLUSIONS = {
         2015: "excluded by hand: outage during the Dec 2014 storms left the total several inches too low",
         2019: "excluded by hand: outage during the Feb 2019 storms left the total several inches too low",
     },
+    # Gauges added in Nov 2026. Partial first years (records start part-way through the year) and
+    # years when the gauge was offline, which the API reports as zero rain.
+    "6146": {  # Los Trancos
+        2014: "excluded by hand: partial first year (records start Feb 26, 2014)",
+        2015: "excluded by hand: gauge offline Jun 2014 to Oct 2015 (reported as zero rain)",
+    },
+    "6147": {  # Westwind Community Barn
+        2018: "excluded by hand: partial first year (records start Nov 15, 2017)",
+        2021: "excluded by hand: gauge offline May 2020 to Oct 2021 (reported as zero rain)",
+    },
+    "6141": {  # Palm Ave
+        2013: "excluded by hand: partial first year (records start Sep 21, 2013)",
+        2020: "excluded by hand: gauge offline May 2019 to Nov 2020 (reported as zero rain)",
+    },
+    "6148": {2022: "excluded by hand: partial first year (records start Jul 2, 2022)"},  # Windy Hill
+    "6149": {2022: "excluded by hand: partial first year (records start Sep 18, 2022)"},  # Wunderlich
+    "6150": {2023: "excluded by hand: partial first year (records start Jan 4, 2023)"},  # Huddart Park
 }
+
+# The suspected-outage check compares a gauge with these gauges (the original 7), so adding gauges
+# doesn't change the results for the existing ones. If none of them are present, all gauges are used.
+OUTAGE_REFERENCE = ("6121", "6140", "6100", "6048", "6129", "6144", "6142")
 
 HOUR_FORMAT = "%Y-%m-%d %H:%M"
 
@@ -308,7 +329,10 @@ def compute_stats(gauges, daily_by_gauge, today):
         gid = g["id"]
         daily = daily_by_gauge.get(gid, {})
         first_data = min((d for d, v in daily.items() if v is not None), default=None)
-        outages = suspected_outages(gid, daily_by_gauge, wy_start(years[0]), today) if daily else []
+        reference = {o: v for o, v in daily_by_gauge.items() if o in OUTAGE_REFERENCE or o == gid}
+        if len(reference) < 2:
+            reference = daily_by_gauge
+        outages = suspected_outages(gid, reference, wy_start(years[0]), today) if daily else []
         outage_days = {d for a, b in outages for d in days_between(a, b)}
 
         complete, excluded, coverage_of = [], [], {}

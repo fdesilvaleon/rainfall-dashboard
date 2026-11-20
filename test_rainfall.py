@@ -350,5 +350,107 @@ class StatsTests(unittest.TestCase):
         self.assertEqual(rf.suspected_outages("X", {"X": dry, "Y": dry, "Z": dry}, days[0], days[-1]), [])
 
 
+class NewGaugeTests(unittest.TestCase):
+    """The 9 gauges added in Nov 2026: hand exclusions, outage reference, full history, trail gauge list."""
+    TODAY = date(2026, 11, 20)  # current water year 2026-27; "normal" uses 2011-12 .. 2025-26
+    ORIGINAL = ["6121", "6140", "6100", "6048", "6129", "6144", "6142"]
+
+    def daily(self, first_day, per_day=0.1, offline=()):
+        """Rain every day from first_day (blank before it), 0 on offline days (as the API reports them)."""
+        return {d: None if d < first_day else (0.0 if d in offline else per_day)
+                for d in rf.days_between(date(2011, 10, 1), self.TODAY)}
+
+    def test_new_exclusions_are_listed(self):
+        expected = {"6146": {2014, 2015}, "6147": {2018, 2021}, "6141": {2013, 2020},
+                    "6148": {2022}, "6149": {2022}, "6150": {2023}}
+        for gid, years in expected.items():
+            self.assertEqual(set(rf.MANUAL_EXCLUSIONS[gid]), years, gid)
+        self.assertEqual(set(rf.MANUAL_EXCLUSIONS["6144"]), {2015, 2019})  # unchanged
+        # Nothing excluded by hand for the gauges with long, clean records.
+        for gid in ("6123", "6004", "6128"):
+            self.assertNotIn(gid, rf.MANUAL_EXCLUSIONS)
+
+    def test_offline_year_reported_as_zero_is_left_out(self):
+        # Westwind: records start Nov 15, 2017; offline May 2020 to Oct 2021, which the API reports as 0.
+        offline = set(rf.days_between(date(2020, 5, 31), date(2021, 10, 17)))
+        daily = {"6147": self.daily(date(2017, 11, 15), offline=offline)}
+        s = rf.compute_stats([{"id": "6147", "name": "Westwind"}], daily, self.TODAY)["gauges"]["6147"]
+        reasons = {e["water_year"]: e["reason"] for e in s["excluded_years"]}
+        self.assertTrue(reasons["2017-18"].startswith("excluded by hand: partial first year"))
+        self.assertTrue(reasons["2020-21"].startswith("excluded by hand: gauge offline"))
+        self.assertNotIn("2020-21", s["water_years_used"])
+        self.assertNotIn("2026-27", s["water_years_used"])  # the current season never counts
+
+    def test_partial_first_years_would_be_left_out_anyway(self):
+        # Without the hand exclusions, the partial first years fail the 95% rule, the same way the
+        # existing gauges' first years do (6140 2011-12, 6144 and 6142 2012-13).
+        starts = {"6146": (date(2014, 2, 26), 2014), "6147": (date(2017, 11, 15), 2018), "6141": (date(2013, 9, 21), 2013),
+                  "6148": (date(2022, 7, 2), 2022), "6149": (date(2022, 9, 18), 2022), "6150": (date(2023, 1, 4), 2023),
+                  "6140": (date(2012, 1, 20), 2012), "6144": (date(2013, 9, 21), 2013), "6142": (date(2013, 9, 21), 2013)}
+        gauges = [{"id": g, "name": g} for g in starts]
+        daily = {g: self.daily(first) for g, (first, _) in starts.items()}
+        with mock.patch.dict(rf.MANUAL_EXCLUSIONS, {}, clear=True):
+            stats = rf.compute_stats(gauges, daily, self.TODAY)["gauges"]
+        for g, (first, year) in starts.items():
+            label = rf.wy_label(year)
+            self.assertNotIn(label, stats[g]["water_years_used"], g)
+            self.assertIn(rf.wy_label(year + 1), stats[g]["water_years_used"], g)
+            reason = next(e["reason"] for e in stats[g]["excluded_years"] if e["water_year"] == label)
+            self.assertTrue(reason.startswith("only "), (g, reason))
+
+    def test_fewer_than_5_usable_years_is_limited_history(self):
+        gauges = [{"id": g, "name": g} for g in ("6148", "6149", "6150")]
+        daily = {"6148": self.daily(date(2022, 7, 2)), "6149": self.daily(date(2022, 9, 18)), "6150": self.daily(date(2023, 1, 4))}
+        stats = rf.compute_stats(gauges, daily, self.TODAY)["gauges"]
+        self.assertEqual({g: (s["years_used"], s["limited_history"]) for g, s in stats.items()},
+                         {"6148": (4, True), "6149": (4, True), "6150": (3, True)})
+
+    def test_new_gauges_do_not_change_existing_outage_checks(self):
+        # 6048 is dry for a week while the other original gauges get a little rain. Adding many very wet
+        # gauges would push the median over the outage limit; the check must ignore them.
+        week = set(rf.days_between(date(2024, 1, 10), date(2024, 1, 16)))
+        daily = {g: self.daily(date(2011, 10, 1), 0.05) for g in self.ORIGINAL}
+        daily["6048"] = self.daily(date(2011, 10, 1), 0.05, offline=week)
+        original = [{"id": g, "name": g} for g in self.ORIGINAL]
+        before = rf.compute_stats(original, daily, self.TODAY)["gauges"]
+        new = ["6147", "6146", "6148", "6149", "6150", "6123", "6004", "6128", "6141"]
+        wet = dict(daily, **{g: self.daily(date(2011, 10, 1), 0.6) for g in new})
+        after = rf.compute_stats(original + [{"id": g, "name": g} for g in new], wet, self.TODAY)["gauges"]
+        self.assertEqual(before["6048"]["suspected_outages"], [])
+        for g in self.ORIGINAL:
+            self.assertEqual(after[g], before[g], g)
+        # A new gauge is checked against the original 7.
+        wet["6147"] = self.daily(date(2011, 10, 1), 0.6, offline=week)
+        after = rf.compute_stats([{"id": "6147", "name": "x"}] + original, wet, self.TODAY)["gauges"]
+        self.assertEqual(after["6147"]["suspected_outages"], [])  # the originals only got 0.05 in a day
+
+    def test_backfill_all_years_keeps_the_whole_record(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.object(rf, "DATA_DIR", Path(tmp) / "data"), mock.patch.object(rf, "HISTORY_DIR", Path(tmp) / "data" / "history"):
+            readings = [(datetime(1980, 3, 11, 10, 45), TIP), (datetime(2026, 11, 19, 14, 0), TIP)]
+            backfill.build_gauge("6128", readings, datetime(2026, 11, 20, 1, 0), all_years=True)
+            daily = rf.read_daily(rf.HISTORY_DIR / "6128_daily.csv")
+            self.assertEqual(min(daily), date(1979, 10, 1))  # start of the first water year with data
+            self.assertIsNone(daily[date(1980, 3, 10)])
+            self.assertAlmostEqual(daily[date(1980, 3, 11)], TIP, places=4)
+            # Without the option: the last 15 water years, as before.
+            backfill.build_gauge("6128", readings, datetime(2026, 11, 20, 1, 0))
+            self.assertEqual(min(rf.read_daily(rf.HISTORY_DIR / "6128_daily.csv")), date(2011, 10, 1))
+            # A gauge whose records start inside the 15 years keeps the usual start.
+            backfill.build_gauge("6150", [(datetime(2023, 1, 4, 17, 30), TIP)], datetime(2026, 11, 20, 1, 0), all_years=True)
+            self.assertEqual(min(rf.read_daily(rf.HISTORY_DIR / "6150_daily.csv")), date(2011, 10, 1))
+
+    def test_trail_conditions_use_only_the_original_7_gauges(self):
+        html = (Path(__file__).parent / "index.html").read_text()
+        import re
+        m = re.search(r"^\s*GAUGES: \[([^\]]*)\]", html, re.M)
+        self.assertIsNotNone(m, "TRAIL.GAUGES not found in index.html")
+        self.assertEqual(re.findall(r'"(\d+)"', m.group(1)), self.ORIGINAL)
+        self.assertEqual(rf.OUTAGE_REFERENCE, tuple(self.ORIGINAL))
+        ids = [g["id"] for g in rf.load_gauges()]
+        self.assertEqual(ids[:7], self.ORIGINAL)
+        self.assertEqual(len(ids), 16)
+
+
 if __name__ == "__main__":
     unittest.main()

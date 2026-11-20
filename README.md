@@ -10,7 +10,9 @@ The dashboard (`index.html`) shows a map of the gauge locations, how each
 gauge's season compares with normal and with last year (a table for all gauges,
 and numbers and a water-year chart for a chosen gauge), hourly rain, and recent
 totals. The map uses standard OpenStreetMap tiles (tile.openstreetmap.org),
-shown in gray at low contrast. It is hosted free on GitHub Pages and reads the data files in this
+shown in gray at low contrast. Where the map is too crowded for every name
+label (especially on phones), some labels are hidden; their names show on hover
+and when zooming in, and tapping any gauge opens its card. It is hosted free on GitHub Pages and reads the data files in this
 repository (`data/<id>.csv`, `data/history/` and `data/stats.json`), so it
 updates whenever new data is collected.
 
@@ -32,7 +34,9 @@ updates whenever new data is collected.
   GitHub skipped some runs), the same request simply starts earlier, up to 30
   days back. It then recomputes `data/stats.json`.
 - **`backfill.py`** downloads the history (the last 15 full water years). It
-  was run once by hand and is not scheduled.
+  was run once by hand and is not scheduled. With `--all-years` it keeps all of
+  a gauge's records instead (`python backfill.py --all-years <id>`); this was
+  used for the 9 gauges added in Nov 2026.
 - **`rainfall.py`** holds the code the two scripts share.
 - **`test_rainfall.py`** checks the code works without contacting the API
   (run `python -m unittest`). GitHub Actions runs it before each collection.
@@ -46,7 +50,7 @@ rainfall data" → "Run workflow"), for example during a storm.
 
 The district asked that requests stay at about one every few minutes at most.
 
-- Each hourly run makes **one request per gauge** (7 in all), at least
+- Each hourly run makes **one request per gauge** (16 in all), at least
   **5 seconds apart**, and asks only for the last 48 hours.
 - If a request fails or times out, it is tried again **at most twice**, after
   30 seconds and then 2 minutes. If it still fails, that gauge is skipped until
@@ -56,6 +60,35 @@ The district asked that requests stay at about one every few minutes at most.
 - Every request identifies the project with the User-Agent
   `rainfall-dashboard personal project (github.com/fdesilvaleon/rainfall-dashboard)`.
 - The history download made one request per gauge, at least 10 seconds apart.
+
+## The gauges
+
+The first 7 are the original Mountain View-area gauges; the other 9 were added
+in Nov 2026 (foothills west of Mountain View and Palo Alto, and the south San
+Jose and Morgan Hill area). "Records start" is the first rain in the API; for the
+original 7 only the last 15 water years are stored.
+
+| ID | Name | Records start (API) |
+|---|---|---|
+| 6121 | Mountain View | Aug 1992 |
+| 6140 | Rancho San Antonio | Jan 2012 |
+| 6100 | Stevens Creek Reservoir | Mar 1979 |
+| 6048 | Sunnyvale Hamilton WTP | Nov 1974 |
+| 6129 | Palo Alto | Feb 1980 |
+| 6144 | Maryknoll Fields | Sep 2013 |
+| 6142 | Trappers Trail | Sep 2013 |
+| 6147 | Westwind Community Barn | Nov 2017 |
+| 6146 | Los Trancos | Feb 2014 |
+| 6148 | Windy Hill | Jul 2022 |
+| 6149 | Wunderlich | Sep 2022 |
+| 6150 | Huddart Park | Jan 2023 |
+| 6123 | Guadalupe Watershed | Oct 1991 |
+| 6004 | Almaden Watershed | Apr 1982 |
+| 6128 | Calero Watershed | Mar 1980 |
+| 6141 | Palm Ave | Sep 2013 |
+
+Windy Hill, Wunderlich and Huddart Park are owned by the San Francisquito Creek
+Joint Powers Authority and maintained by Valley Water.
 
 ## About the data
 
@@ -94,9 +127,12 @@ protected too. **Trade-off:** if Valley Water ever legitimately corrects a value
 downward, the saved value stays until it is fixed by hand in `data/<gauge id>.csv`
 (and the matching day in `data/history/<gauge id>_daily.csv`).
 
-### `data/history/<gauge id>_daily.csv`: daily, last 15 full water years
+### `data/history/<gauge id>_daily.csv`: daily history
 
-Columns `date` and `rain_in` (inches), from Oct 1, 2011, updated every hour.
+Columns `date` and `rain_in` (inches), updated every hour. The original 7 gauges
+start on Oct 1, 2011 (the last 15 full water years). The 9 gauges added in Nov
+2026 keep **all** their records: from Oct 1 of their first water year (Guadalupe
+1991, Almaden 1981, Calero 1979), or Oct 1, 2011 if their records start later.
 A blank value means no data (before the gauge's records start).
 
 ### `data/stats.json`: statistics for the website
@@ -120,11 +156,38 @@ daily data is kept unchanged):
 
 - Maryknoll Fields (6144): 2014-15 and 2018-19. They pass the 95% rule, but
   outages during big storms (Dec 2014, Feb 2019) left them several inches too low.
+- Los Trancos (6146): 2013-14 (partial first year) and 2014-15 (offline Jun 2014
+  to Oct 2015).
+- Westwind Community Barn (6147): 2017-18 (partial first year) and 2020-21
+  (offline May 2020 to Oct 2021).
+- Palm Ave (6141): 2012-13 (partial first year) and 2019-20 (offline May 2019
+  to Nov 2020).
+- Windy Hill (6148) and Wunderlich (6149): 2021-22 (partial first year).
+- Huddart Park (6150): 2022-23 (partial first year).
+
+The API reports the offline periods as zero rain, so they look like very dry
+years. Partial first years would also fail the 95% rule on their own (as the
+original gauges' first years do: 6140 2011-12, 6144 and 6142 2012-13); they are
+listed by hand to make it explicit. The offline periods also reach into the
+neighbouring years, which the 95% rule leaves out automatically: Westwind 2019-20
+and Palm Ave 2018-19 and 2020-21. Windy Hill, Wunderlich and Huddart Park have
+fewer than 5 complete years, so they show "limited history".
+
+**Notes on the added gauges:**
+
+- **Los Trancos (6146)** is not a Valley Water sensor, and Valley Water says its
+  data has not been quality controlled.
+- **Wunderlich (6149)** logged 4.02 in in one 15-minute reading on Jan 4, 2023,
+  after recording much less than nearby gauges during the Dec 27-31 storms (most
+  likely a clogged funnel emptying). Its daily amounts from Dec 27, 2022 to
+  Jan 4, 2023 are unreliable, although the year's total looks fine.
 
 **Missing data:** because outages look like dry spells (see the note above), a dry spell is
 treated as a **suspected outage** (and its days count as missing) if the other
 gauges clearly got rain at the same time: a median of at least 0.5 in on one
-day, or at least 1 in over the spell.
+day, or at least 1 in over the spell. "The other gauges" are always the original
+7 (`OUTAGE_REFERENCE` in `rainfall.py`), so adding gauges doesn't change the
+results for the existing ones.
 
 The data is preliminary and may contain errors, as noted by the district.
 
@@ -263,7 +326,10 @@ carries on.
 
 ## Trail conditions (on the dashboard)
 
-A rough running and biking guide from the **average of all gauges**, for today
+A rough running and biking guide from the **average of the 7 original gauges**
+(Mountain View, Rancho San Antonio, Stevens Creek Reservoir, Sunnyvale Hamilton,
+Palo Alto, Maryknoll Fields, Trappers Trail; the list is `GAUGES` in the `TRAIL`
+block), for today
 (two cards) and the next 2 days (a table), in three time blocks: morning 4-10 AM,
 mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Each block gets the
 **worse** of three checks:
@@ -276,8 +342,8 @@ mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Each block gets the
   poor. Biking: under 0.02, 0.05 and 0.15.
   **Season adjustment:** early in the water year the soil is dry and absorbs the
   first storms, so the same wetness gives less mud than in mid-winter. The limits
-  are multiplied according to the season rain total, the average across gauges
-  of rain since Oct 1 (the dashboard's "Season to date" numbers, from the hourly
+  are multiplied according to the season rain total, the average across those
+  gauges of rain since Oct 1 (the dashboard's "Season to date" numbers, from the hourly
   files). Starting values: under 2.0 in, biking x 2.5; 2.0 to under 5.0 in,
   biking x 1.5; 5.0 in or more, x 1.0 (the base limits). Running is x 1.0 at
   every step for now. If the season total can't be determined, the multiplier is
