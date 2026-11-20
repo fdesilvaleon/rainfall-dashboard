@@ -1820,15 +1820,20 @@ const TRAIL = {
     running: { optimal: [45, 68], good: [38, 78], fair: [30, 88] },
     biking: { optimal: [50, 72], good: [42, 82], fair: [34, 92] },
   },
+  // Road wetness, for paved regions with roadWet (the Valley floor): roads stay wet for hours after rain. Rain before a
+  // block (measured, then forecast), averaged over the region's gauges: FAIR_AT or more in the FAIR_HOURS before = the
+  // block is at best Fair; POOR_AT or more in the POOR_HOURS before = Poor. Each window is checked on its own: a gauge
+  // missing an hour in a window is left out of that window's average; none left = no cap from that window.
+  ROAD_WET: { FAIR_HOURS: 12, FAIR_AT: 0.02, POOR_HOURS: 6, POOR_AT: 0.15 },
   // Trail regions, each rated with its own gauges (ids from gauges.csv), shown in "Region ratings (preview)".
   // The Trail conditions tiles above still use GAUGES. useWetness: false = paved, so ground wetness isn't used and
-  // the rating is the worse of block rain and comfort.
+  // the rating is the worse of block rain and comfort; roadWet: true adds the ROAD_WET cap.
   REGIONS: [
     { id: "foothills", name: "Peninsula foothills", gauges: ["6140", "6100", "6142", "6147"], useWetness: true },
     // 6146 Los Trancos is not a Valley Water sensor; Valley Water says its data isn't quality-checked.
     { id: "skyline", name: "Skyline ridge", gauges: ["6148", "6149", "6150", "6146"], useWetness: true },
     { id: "south", name: "South Valley", gauges: ["6123", "6004", "6128", "6141"], useWetness: true },
-    { id: "valley", name: "Valley floor", gauges: ["6121", "6048", "6129", "6144"], useWetness: false },
+    { id: "valley", name: "Valley floor", gauges: ["6121", "6048", "6129", "6144"], useWetness: false, roadWet: true },
   ],
 };
 // ==============================================================================================
@@ -1927,7 +1932,8 @@ function forecastPeriods(id) {
 // The inputs for one block, averaged over gauges (TRAIL.GAUGES, or a region's). useForecast=false: ground wetness
 // only, as measured so far.
 function blockInputs(startH, endH, useForecast, regionId) {
-  const wet = [], rain = [], feels = [], wetIds = [];
+  const wet = [], rain = [], feels = [], wetIds = [], roadFair = [], roadPoor = [];
+  const roadWet = trailRegion(regionId).roadWet;
   for (const g of trailGauges(regionId)) {
     const periods = useForecast ? forecastPeriods(g.id) : [];
     const anchor = useForecast ? startH : Math.min(startH, g.last + 1);
@@ -1946,6 +1952,17 @@ function blockInputs(startH, endH, useForecast, regionId) {
       }
     }
     if (complete) { wet.push(windows); wetIds.push(g.id); }
+    if (roadWet) {
+      // Road wetness: rain in the hours before the block starts (measured, then forecast). Null if any hour is missing.
+      const before = hours => {
+        let sum = 0;
+        for (let h = startH - hours; h < startH; h++) { const v = hourRain(h); if (v == null) return null; sum += v; }
+        return sum;
+      };
+      const fair = before(TRAIL.ROAD_WET.FAIR_HOURS), poor = before(TRAIL.ROAD_WET.POOR_HOURS);
+      if (fair != null) roadFair.push(fair);
+      if (poor != null) roadPoor.push(poor);
+    }
     if (!useForecast) continue;
     // Forecast rain and feels-like during the block, from the periods that overlap it.
     let r = 0, covered = 0, rainOk = true, fSum = 0, fHours = 0;
@@ -1966,6 +1983,7 @@ function blockInputs(startH, endH, useForecast, regionId) {
     windows: win, wetGauges: wet.length, wetIds,
     rain: avg(rain), rainGauges: rain.length,
     feels: avg(feels), feelsGauges: feels.length,
+    ...(roadWet ? { roadFair: avg(roadFair), roadFairGauges: roadFair.length, roadPoor: avg(roadPoor), roadPoorGauges: roadPoor.length } : {}),
   };
 }
 
@@ -1979,7 +1997,15 @@ function blockRating(inputs, sport, multiplier = 1, useWetness = true) {
     comfort: inputs.feels == null ? null : rateComfort(sport, inputs.feels),
   };
   const known = Object.values(checks).filter(v => v != null);
-  if (!useWetness) return { checks, rating: known.length ? Math.max(...known) : null, noWetness: true };
+  if (!useWetness) {
+    if (known.length && (inputs.roadFair != null || inputs.roadPoor != null)) {  // road-wetness cap (regions with roadWet only)
+      const rw = TRAIL.ROAD_WET, round = x => (x == null ? null : Math.round(x * 100) / 100);
+      const fair = round(inputs.roadFair), poor = round(inputs.roadPoor);
+      checks.road = poor != null && poor >= rw.POOR_AT ? 3 : fair != null && fair >= rw.FAIR_AT ? 2 : 0;
+      known.push(checks.road);
+    }
+    return { checks, rating: known.length ? Math.max(...known) : null, noWetness: true };
+  }
   return { checks, rating: inputs.wetness == null ? null : Math.max(...known) };
 }
 
@@ -2000,6 +2026,10 @@ function inputsText(inp) {
   if (inp.wetness != null) parts.push(`ground ${inp.wetness.toFixed(2)} in (${inp.wetGauges} gauges)`);
   if (inp.rain != null) parts.push(`rain ${inp.rain.toFixed(2)} in`);
   if (inp.feels != null) parts.push(`feels like ${Math.round(inp.feels)}°F`);
+  if (inp.roadFair != null || inp.roadPoor != null) {
+    const amt = (x, h) => `${x == null ? "–" : x.toFixed(2)} in in the ${h} h before`;
+    parts.push(`roads: ${amt(inp.roadPoor, TRAIL.ROAD_WET.POOR_HOURS)}, ${amt(inp.roadFair, TRAIL.ROAD_WET.FAIR_HOURS)}`);
+  }
   return parts.join(" · ");
 }
 
@@ -2011,6 +2041,8 @@ function reasonLine(sport, block, inp, r, futureRainAll) {
     const c = r.checks;
     if (r.rating === 0) return `${why}: no rain expected${inp.feels != null ? `, feels like ${Math.round(inp.feels)}°F` : ""}.`;
     if (c.rain === r.rating) return `${why}: rain expected ${when} (${inp.rain.toFixed(2)} in).`;
+    if (c.road === r.rating && c.road === 3) return `Roads very wet (${inp.roadPoor.toFixed(2)} in of rain in the ${TRAIL.ROAD_WET.POOR_HOURS} hours before).`;
+    if (c.road === r.rating) return `Roads likely still wet (${inp.roadFair.toFixed(2)} in of rain in the ${TRAIL.ROAD_WET.FAIR_HOURS} hours before).`;
     const f = Math.round(inp.feels);
     return `${why}: ${f < TRAIL.COMFORT[sport].optimal[0] ? "cold" : "hot"}, feels like ${f}°F ${when}.`;
   }
@@ -2208,6 +2240,12 @@ function regionToday(regionId) {
            gaugesWithData: gauges.map(g => g.id), useForecast };
 }
 
+// The road-wetness rule in plain words, for the preview and the map card.
+function roadWetText() {
+  const rw = TRAIL.ROAD_WET;
+  return `roads count as wet (Fair at best) for ${rw.FAIR_HOURS} hours after rain, and very wet (Poor) for ${rw.POOR_HOURS} hours after ${rw.POOR_AT.toFixed(2)} in or more`;
+}
+
 function renderRegionPreview() {
   const box = document.getElementById("region-rows");
   box.textContent = "";
@@ -2237,7 +2275,8 @@ function renderRegionPreview() {
       const facts = el("p", null, "facts");
       facts.append("Ground wetness: ");
       facts.appendChild(el("b", !r.useWetness ? "not used (pavement)" : t.wetness == null ? "no data" : `${t.wetness.toFixed(2)} in`));
-      if (!r.useWetness) facts.append(" · rated on the weather in each block");
+      if (!r.useWetness) facts.append(" · rated on the weather in each block" +
+        (r.roadWet ? "; " + roadWetText() : ""));
       row.appendChild(facts);
       const missing = r.gauges.filter(id => !t.gaugesWithData.includes(id));
       row.appendChild(el("p", `Gauges: ${t.gaugesWithData.map(label).join(", ")}` +
@@ -2380,6 +2419,7 @@ function showTrailMapCard(regionId, pinned) {
     card.appendChild(blocks);
     const wet = !region.useWetness ? "not used (pavement)" : today.wetness == null ? "no data" : `${today.wetness.toFixed(2)} in`;
     card.appendChild(el("p", `Ground wetness: ${wet}`, "facts"));
+    if (region.roadWet) { const t = roadWetText(); card.appendChild(el("p", t[0].toUpperCase() + t.slice(1), "facts")); }
     const n = today.gaugesWithData.length;
     card.appendChild(el("p", `Based on ${n} gauge${n === 1 ? "" : "s"}`, "facts"));
   }

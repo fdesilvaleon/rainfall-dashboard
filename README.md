@@ -372,7 +372,11 @@ with the real park and city shapes from `data/parks.geojson` and
 `data/cities.geojson` (see "Boundary data" below). Each region is rated with its
 own gauges (`TRAIL.REGIONS` in `index.html`), the same way as the "Region ratings
 (preview)" section; the Valley floor is paved, so it is rated on the weather in
-each block only. A Running / Biking switch recolors the map, and hovering over
+each block (forecast rain and feels-like) instead of ground wetness, plus road
+wetness, from the rain before each block (measured, then forecast, averaged over
+the Valley floor gauges): 0.02 in or more in the 12 hours before, the block is at
+best Fair; 0.15 in or more in the 6 hours before, Poor (`TRAIL.ROAD_WET` in
+`index.html`). A Running / Biking switch recolors the map, and hovering over
 or tapping a region (or Tab, then Enter) opens a card with its parks or cities,
 the rating and its reason, the three time blocks, ground wetness and the number
 of gauges. The two shape files add about 51 KB (about 13 KB compressed); if they
