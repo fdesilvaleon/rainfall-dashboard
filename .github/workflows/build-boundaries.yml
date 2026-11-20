@@ -42,7 +42,7 @@ jobs:
         run: |
           mkdir -p downloads
           set +e
-          python -u tools/build_boundaries.py --cache-dir downloads > tools/boundaries_report.txt 2>&1
+          python -u tools/build_boundaries.py --only cities --cache-dir downloads > tools/boundaries_report.txt 2>&1
           echo "BUILD_STATUS=$?" >> "$GITHUB_ENV"
           cat tools/boundaries_report.txt
           { echo '```'; cat tools/boundaries_report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
