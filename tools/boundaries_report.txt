@@ -1,6 +1,5 @@
-overpass_parks.json: HTTP Error 502: Bad Gateway; trying again in 60 seconds
 Wrote data/cities.geojson: 5 features, 15 KB
-Wrote data/parks.geojson: 16 features, 32 KB
+Wrote data/parks.geojson: 17 features, 34 KB
 
 name                                   region    matched as                                     km2 pieces  nearest gauge
 Palo Alto                              valley    Palo Alto city                               62.91      1  6129 Palo Alto (0.0 km, inside)
@@ -8,7 +7,7 @@ Mountain View                          valley    Mountain View city             
 Sunnyvale                              valley    Sunnyvale city                               57.14      1  6048 Sunnyvale Hamilton WTP (0.0 km, inside)
 Los Altos                              valley    Los Altos city                               16.95      1  6048 Sunnyvale Hamilton WTP (0.3 km)
 Cupertino                              valley    Cupertino city                               29.28      1  6144 Maryknoll Fields (0.0 km, inside)
-Pearson-Arastradero Preserve           foothills NOT MATCHED  (similar names: ['Enid Pearson-Arastradero Preserve'])
+Pearson-Arastradero Preserve           foothills Enid Pearson-Arastradero Preserve             2.66      2  6147 Westwind Community Barn (1.5 km)
 Foothills Park                         foothills Foothills Nature Preserve                     5.47      1  6142 Trappers Trail (0.0 km, inside)
 Hidden Villa                           foothills Hidden Villa                                  6.28      1  6146 Los Trancos (0.8 km)
 Rancho San Antonio Open Space Preserve foothills Rancho San Antonio Open Space Preserve        8.68      1  6140 Rancho San Antonio (0.0 km)
@@ -27,6 +26,7 @@ Calero County Park                     south     Calero County Park             
 Santa Teresa County Park               south     Santa Teresa County Park                      6.77      1  6128 Calero Watershed (4.1 km)
 
 Overlaps between regions (over 1% of the smaller shape), and parks of different regions within 100 m:
+  Palo Alto (valley) / Pearson-Arastradero Preserve (foothills): 100% overlap
   Palo Alto (valley) / Foothills Park (foothills): 99% overlap
   Palo Alto (valley) / Hidden Villa (foothills): 6% overlap
   Palo Alto (valley) / Rancho San Antonio Open Space Preserve (foothills): 12% overlap
@@ -39,3 +39,6 @@ Overlaps between regions (over 1% of the smaller shape), and parks of different 
   Hidden Villa (foothills) / Monte Bello Open Space Preserve (skyline): 0 m apart
   Hidden Villa (foothills) / Los Trancos Open Space Preserve (skyline): 0 m apart
   Rancho San Antonio Open Space Preserve (foothills) / Monte Bello Open Space Preserve (skyline): 0 m apart
+
+Outline problems:
+  none
