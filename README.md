@@ -10,7 +10,9 @@ ratings are still part of the page.
 
 The dashboard (`index.html`) shows a trail conditions map and ratings for each
 trail region, and the rainfall itself: how each gauge's season compares with normal and with last year
-(a chart for all gauges, and numbers and a water-year chart for a chosen gauge),
+(a "% of normal" chart by trail region, with each gauge's numbers under
+"Gauge details", and numbers and a water-year chart for a chosen gauge, picked
+from a list grouped by region),
 hourly rain, and recent totals. The map uses standard OpenStreetMap tiles
 (tile.openstreetmap.org), shown in gray at low contrast. It is hosted free on GitHub Pages and reads the data files in this
 repository (`data/<id>.csv`, `data/history/` and `data/stats.json`), so it

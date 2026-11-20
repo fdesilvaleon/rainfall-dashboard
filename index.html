@@ -212,6 +212,15 @@
   .tmap-legend span { display: inline-flex; align-items: center; gap: 6px; }
   .tmap-legend i { display: inline-block; width: 16px; height: 12px; border-radius: 3px; border: 1.5px solid; }
 
+  /* % of normal by region: per-gauge details */
+  .pct-details { margin: 10px 0 0; font-size: 0.9rem; }
+  .pct-details summary { cursor: pointer; color: var(--accent); font-weight: 600; padding: 6px 0; }
+  .pct-details summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .pct-details h3 { margin: 10px 0 2px; font-size: 0.95rem; }
+  .pct-details ul { margin: 0; padding-left: 18px; }
+  .pct-details li { margin: 2px 0; font-variant-numeric: tabular-nums; }
+  .pct-details .left { color: var(--muted); }
+
   .footnote { color: var(--muted); font-size: 0.85rem; margin: 8px 0 0; }
   .footnote[hidden] { display: none; }
 
@@ -329,11 +338,15 @@
   </section>
 
   <section class="card">
-    <h2>% of normal by gauge</h2>
-    <p class="sub" id="pct-sub">Rain since Oct 1 as a share of the normal amount by this date. The dashed line is 100% (normal).</p>
-    <div class="chart-box" id="pct-box"><canvas id="pct-chart" aria-label="Bar chart of each gauge's rain since Oct 1 as a percentage of normal"></canvas></div>
+    <h2>% of normal by region</h2>
+    <p class="sub" id="pct-sub">Average of each region's gauges, rain since Oct 1 as a share of the normal amount by this date. The dashed line is 100% (normal).</p>
+    <div class="chart-box" id="pct-box"><canvas id="pct-chart" aria-label="Bar chart of each trail region's rain since Oct 1 as a percentage of normal, the average of its gauges"></canvas></div>
     <p id="pct-missing" class="footnote" hidden></p>
     <p id="pct-note" class="note" hidden>Early in the season these percentages swing widely because normal-to-date is small.</p>
+    <details id="pct-details" class="pct-details">
+      <summary>Gauge details</summary>
+      <div id="pct-details-body"></div>
+    </details>
   </section>
 
   <section class="card" id="gauge">
@@ -719,6 +732,26 @@ function yearsSummary(st) {
   return { long: long + "." };
 }
 
+// One gauge's line in the % of normal tooltip and details: its percentage, or why it is left out.
+function pctGaugeLine(g) {
+  return g.pct != null ? `${g.label}: ${Math.round(g.pct)}% (${fmtIn(g.season)} in so far, normal ${fmtIn(g.normal)} in)`
+                       : `${g.label}: left out (${g.reason})`;
+}
+
+// "Gauge details" under the chart: every region with its gauges, readable without hover.
+function renderPctDetails(regions) {
+  const body = document.getElementById("pct-details-body");
+  body.textContent = "";
+  if (!state.stats) { body.appendChild(el("p", "The statistics file couldn't be loaded.", "left")); return; }
+  for (const x of regions) {
+    body.appendChild(el("h3", x.value == null ? `${x.region.name}: no value (no gauge with a normal for this date)`
+      : `${x.region.name}: ${Math.round(x.value)}% (average of ${x.used.length} of ${x.gauges.length} gauges)`));
+    const ul = el("ul");
+    for (const g of x.gauges) ul.appendChild(el("li", pctGaugeLine(g), g.pct == null ? "left" : ""));
+    body.appendChild(ul);
+  }
+}
+
 // ---------- header ----------
 
 function renderHeader() {
@@ -727,7 +760,7 @@ function renderHeader() {
     : `${fmtHour(state.latest)} hour (PST, as reported by the district)`;
 }
 
-// ---------- % of normal by gauge ----------
+// ---------- % of normal by region ----------
 
 // Draws the dashed 100% line and writes each bar's percentage just past its end.
 const pctChartExtras = {
@@ -759,29 +792,40 @@ const pctChartExtras = {
   },
 };
 
-// One bar per gauge: rain since Oct 1 as a percentage of normal for this date.
-// Gauges without a normal (limited history, missing data) are left out and listed below the chart.
+// Each trail region's % of normal: the plain average of its gauges' percentages (each gauge counts equally).
+// Gauges with no data, limited history or no normal for this date are left out, with the reason.
+function regionPctOfNormal() {
+  return TRAIL.REGIONS.map(r => {
+    const gauges = r.gauges.map(id => {
+      const g = state.gauges.find(x => x.id === id);
+      if (!g) return { id, label: id, reason: "not in the gauge list" };
+      const p = seasonProgress(g);
+      const base = { id, label: g.label, name: g.name };
+      if (!g.ok) return { ...base, reason: "data couldn't be loaded" };
+      if (p.limited) return { ...base, reason: "limited history" };
+      if (p.pctNormal == null) return { ...base, reason: "no normal for this date" };
+      return { ...base, pct: p.pctNormal, season: p.season, normal: p.normal, early: p.early };
+    });
+    const used = gauges.filter(g => g.pct != null);
+    return { region: r, gauges, used, value: used.length ? used.reduce((a, g) => a + g.pct, 0) / used.length : null };
+  });
+}
+
+// One bar per trail region: the average of its gauges' rain since Oct 1 as a percentage of normal for this date.
+// A region with no gauge that has a normal gets no bar and is listed below the chart.
 function renderPctChart() {
   const box = document.getElementById("pct-box");
   const missingLine = document.getElementById("pct-missing");
-  const shown = [], left = [];
-  let anyEarly = false;
-  for (const g of state.gauges) {
-    const p = seasonProgress(g);
-    if (!g.ok) left.push(`${g.label} (data couldn't be loaded)`);
-    else if (!state.stats) continue;
-    else if (p.limited) left.push(`${g.label} (limited history)`);
-    else if (p.pctNormal == null) left.push(`${g.label} (no normal for this date)`);
-    else {
-      shown.push({ label: g.label, value: p.pctNormal, season: p.season, normal: p.normal });
-      if (p.early) anyEarly = true;
-    }
-  }
+  const regions = state.stats ? regionPctOfNormal() : [];
+  const shown = regions.filter(x => x.value != null);
+  const left = regions.filter(x => x.value == null).map(x => `${x.region.name} (no gauge with a normal for this date)`);
+  const anyEarly = shown.some(x => x.used.some(g => g.early));
   missingLine.textContent = !state.stats
     ? "The statistics file couldn't be loaded, so percentages of normal aren't available right now."
     : left.length ? `Not shown: ${left.join(", ")}.` : "";
   missingLine.hidden = !missingLine.textContent;
   document.getElementById("pct-note").hidden = !anyEarly;
+  renderPctDetails(regions);
   if (state.charts.pct) { state.charts.pct.destroy(); state.charts.pct = null; }
   box.hidden = !shown.length;
   if (!shown.length) return;
@@ -794,7 +838,7 @@ function renderPctChart() {
   state.charts.pct = new Chart(document.getElementById("pct-chart"), {
     type: "bar",
     data: {
-      labels: shown.map(s => s.label),
+      labels: shown.map(s => s.region.name),
       datasets: [{
         data: shown.map(s => s.value),
         backgroundColor: css("--bar"),
@@ -813,10 +857,12 @@ function renderPctChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
+          displayColors: false,  // one bar color: no color square needed
           callbacks: {
+            title: items => `${shown[items[0].dataIndex].region.name}: ${Math.round(shown[items[0].dataIndex].value)}% of normal`,
             label: c => {
               const s = shown[c.dataIndex];
-              return `${Math.round(s.value)}% of normal: ${fmtIn(s.season)} in so far, normal ${fmtIn(s.normal)} in`;
+              return [`Based on ${s.used.length} of ${s.gauges.length} gauges`, ...s.gauges.map(pctGaugeLine)];
             },
           },
         },
@@ -2335,12 +2381,30 @@ function selectGauge(id) {
 
 function setupControls() {
   const select = document.getElementById("gauge-select");
-  for (const g of state.gauges) {
+  // Grouped by trail region (TRAIL.REGIONS order); gauges in no region go under "Other", so none disappear.
+  const option = g => {
     const opt = document.createElement("option");
     opt.value = g.id;
     opt.textContent = g.ok ? g.name : `${g.name} (no data)`;
     opt.disabled = !g.ok;
-    select.appendChild(opt);
+    return opt;
+  };
+  const inRegion = new Set();
+  for (const r of TRAIL.REGIONS) {
+    const group = document.createElement("optgroup");
+    group.label = r.name;
+    for (const id of r.gauges) {
+      const g = state.gauges.find(x => x.id === id);
+      if (g && !inRegion.has(id)) { group.appendChild(option(g)); inRegion.add(id); }
+    }
+    if (group.children.length) select.appendChild(group);
+  }
+  const others = state.gauges.filter(g => !inRegion.has(g.id));
+  if (others.length) {
+    const group = document.createElement("optgroup");
+    group.label = "Other";
+    others.forEach(g => group.appendChild(option(g)));
+    select.appendChild(group);
   }
   select.value = state.selected;
   select.addEventListener("change", () => selectGauge(select.value));
