@@ -1,0 +1,68 @@
+name: Build boundary data (add-boundaries branch only)
+
+# Builds data/parks.geojson and data/cities.geojson on GitHub's machines, because the
+# OpenStreetMap Overpass API can't be reached from the cloud environment used to write this.
+# Runs only when the add-boundaries branch is pushed with a change to the build script,
+# data/regions.json or this file. Never on main and never on a schedule: the data is static.
+# Commits made by this workflow don't start it again.
+
+on:
+  push:
+    branches: [add-boundaries]
+    paths:
+      - tools/build_boundaries.py
+      - data/regions.json
+      - .github/workflows/build-boundaries.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-boundaries
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install map libraries
+        run: pip install shapely pyproj pyshp
+      - name: Build boundary files
+        run: |
+          mkdir -p downloads
+          set +e
+          python tools/build_boundaries.py --cache-dir downloads > tools/boundaries_report.txt 2>&1
+          echo "BUILD_STATUS=$?" >> "$GITHUB_ENV"
+          cat tools/boundaries_report.txt
+          { echo '```'; cat tools/boundaries_report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the downloads for checking
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: boundary-build
+          path: |
+            tools/boundaries_report.txt
+            data/parks.geojson
+            downloads/overpass_parks.json
+          retention-days: 14
+      - name: Commit the boundary files and the build report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add tools/boundaries_report.txt data/cities.geojson
+          [ -f data/parks.geojson ] && git add data/parks.geojson
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+          else
+            git commit -m "Build boundary data (parks and city limits)"
+            git pull --rebase && git push
+          fi
+      - name: Check the build and run the tests
+        run: |
+          if [ "$BUILD_STATUS" != "0" ]; then echo "The build failed; see tools/boundaries_report.txt"; exit 1; fi
+          python -m unittest

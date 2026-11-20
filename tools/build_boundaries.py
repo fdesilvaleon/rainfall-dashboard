@@ -24,6 +24,7 @@ import json
 import math
 import re
 import sys
+import time
 import urllib.parse
 import urllib.request
 import zipfile
@@ -60,13 +61,20 @@ def transform(func, geom):
 # ---------- downloads ----------
 
 def download(url, cache, name, data=None, timeout=300):
+    """One request; if it fails, one more try after a minute (Overpass is sometimes busy)."""
     path = Path(cache) / name if cache else None
     if path and path.exists():
         return path.read_bytes()
     body = urllib.parse.urlencode(data).encode() if data else None
     req = urllib.request.Request(url, data=body, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read()
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read()
+    except Exception as e:
+        print(f"{name}: {e}; trying again in 60 seconds", file=sys.stderr)
+        time.sleep(60)
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read()
     if path:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(raw)
@@ -171,7 +179,7 @@ def build_parks(cfg, cache, report):
             continue
         geom = clean(unary_union(geoms))
         ids = ", ".join(f"{el['type']} {el['id']}" for el in found)
-        features.append(feature(park, geom, f"OpenStreetMap {ids}"))
+        features.append(feature(park, geom, f"OpenStreetMap {ids} ({matched})"))
         report.append({"kind": "park", "name": park["name"], "region": park["region"], "matched": matched, "osm": ids,
                        "tags": sorted({f"{k}={v}" for el in found for k, v in el.get("tags", {}).items() if (k, v) in PARK_TAGS}),
                        "geom": geom})

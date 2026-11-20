@@ -83,8 +83,12 @@ class GeoJsonTests(unittest.TestCase):
         self.assertLess(sum(sizes.values()), MAX_TOTAL)
 
     def test_build_script_is_not_in_the_hourly_workflow(self):
-        for wf in (ROOT / ".github" / "workflows").glob("*.yml"):
-            self.assertNotIn("build_boundaries", wf.read_text(), wf.name)
+        hourly = (ROOT / ".github" / "workflows" / "collect.yml").read_text()
+        self.assertNotIn("build_boundaries", hourly)
+        # The boundary workflow runs only on the add-boundaries branch, never on a schedule.
+        boundary = (ROOT / ".github" / "workflows" / "build-boundaries.yml").read_text()
+        self.assertNotIn("schedule", boundary)
+        self.assertIn("branches: [add-boundaries]", boundary)
 
 
 if __name__ == "__main__":
