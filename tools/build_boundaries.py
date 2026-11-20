@@ -78,7 +78,7 @@ def overpass(query, cache, name):
     raise RuntimeError(f"no Overpass server answered ({error})")
 
 
-def download(url, cache, name, data=None, timeout=300):
+def download(url, cache, name, data=None, timeout=180):
     """One request; if it fails, one more try after a minute (Overpass is sometimes busy)."""
     path = Path(cache) / name if cache else None
     if path and path.exists():

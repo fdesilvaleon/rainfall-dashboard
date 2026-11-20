@@ -25,7 +25,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,6 +34,7 @@ jobs:
       - name: Install map libraries
         run: pip install shapely pyproj pyshp
       - name: Build boundary files
+        timeout-minutes: 30
         run: |
           mkdir -p downloads
           set +e
@@ -42,6 +43,8 @@ jobs:
           cat tools/boundaries_report.txt
           { echo '```'; cat tools/boundaries_report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - name: Compare with official data (temporary)
+        if: always()
+        timeout-minutes: 10
         run: |
           set +e
           python tools/diagnose_boundaries.py > tools/boundaries_diagnosis.txt 2>&1
@@ -57,9 +60,11 @@ jobs:
             downloads/overpass_parks.json
           retention-days: 14
       - name: Commit the boundary files and the build report
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          [ -s tools/boundaries_report.txt ] || echo "The build step didn't finish (timed out or crashed)." > tools/boundaries_report.txt
           git add tools/boundaries_report.txt data/cities.geojson
           [ -f tools/boundaries_diagnosis.txt ] && git add tools/boundaries_diagnosis.txt
           [ -f data/parks.geojson ] && git add data/parks.geojson
