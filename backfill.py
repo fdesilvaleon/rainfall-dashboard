@@ -2,6 +2,7 @@
 
     python backfill.py               # every gauge in gauges.csv
     python backfill.py 6121 6140     # only these gauges (for example a newly added one)
+    python backfill.py --all-years 6147   # all of a gauge's records, not just the last 15 water years
 
 For each gauge it makes ONE request covering the last 15 full water years up to
 today, at least 10 seconds after the previous request, and then writes:
@@ -11,18 +12,23 @@ and recomputes data/stats.json. Existing files for those gauges are replaced.
 
 Days before a gauge's first recorded rain are left blank (no data).
 
+--all-years asks for everything since 1970 and keeps the daily history from the
+start of the gauge's first water year (or the usual start, if that is earlier).
+The statistics still use only the last 15 full water years.
+
 --raw-dir DIR saves each API response in DIR, and reuses a saved response
 instead of asking the API again.
 """
 import argparse
 import json
 import sys
-from datetime import datetime, time as dtime
+from datetime import date, datetime, time as dtime
 from pathlib import Path
 
 import rainfall as rf
 
 GAP_SECONDS = 10
+EARLIEST = date(1970, 1, 1)  # --all-years: start of the request (the district's records begin in the 1970s)
 
 
 def get_history(gid, start, end, pacer, raw_dir=None):
@@ -36,12 +42,14 @@ def get_history(gid, start, end, pacer, raw_dir=None):
     return rf.fetch_rain(gid, start, end, pacer, on_payload=keep), fetched_at
 
 
-def build_gauge(gid, readings, now):
+def build_gauge(gid, readings, now, all_years=False):
     current_hour = rf.hour_of(now)
     first_day = rf.wy_start(rf.water_year(now) - rf.HISTORY_YEARS)
     keep_from = datetime.combine(rf.wy_start(rf.water_year(now) - 1), dtime())
     rainy = [t for t, v in readings if v > 0]
     first_data = rf.hour_of(min(rainy)) if rainy else None
+    if all_years and first_data:
+        first_day = min(first_day, rf.wy_start(rf.water_year(first_data.date())))
 
     hourly = rf.hourly_totals(readings, datetime.combine(first_day, dtime()), current_hour)
     for h in hourly:
@@ -59,6 +67,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("ids", nargs="*", help="gauge ids (default: all in gauges.csv)")
     parser.add_argument("--raw-dir", help="folder to save API responses in, and reuse them from")
+    parser.add_argument("--all-years", action="store_true", help="keep all available years, not just the last 15")
     args = parser.parse_args()
 
     gauges = rf.load_gauges()
@@ -67,11 +76,11 @@ def main():
         Path(args.raw_dir).mkdir(parents=True, exist_ok=True)
     pacer = rf.Pacer(GAP_SECONDS)
     today = rf.now_pst().date()
-    start = rf.wy_start(rf.water_year(today) - rf.HISTORY_YEARS)
+    start = EARLIEST if args.all_years else rf.wy_start(rf.water_year(today) - rf.HISTORY_YEARS)
     for g in chosen:
         try:
             readings, fetched_at = get_history(g["id"], start, today, pacer, args.raw_dir)
-            first = build_gauge(g["id"], readings, fetched_at)
+            first = build_gauge(g["id"], readings, fetched_at, args.all_years)
             print(f"{g['id']} {g['name']}: {len(readings)} rainy 15-minute periods; first in this period: {first:%Y-%m-%d}" if first
                   else f"{g['id']} {g['name']}: no rain recorded in this period")
         except Exception as e:

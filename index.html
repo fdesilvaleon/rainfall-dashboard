@@ -370,7 +370,8 @@
       <dt>% of average season</dt>
       <dd>Season to date as a share of the average total for a whole water year.</dd>
       <dt>Trail conditions</dt>
-      <dd>A rough guide for running and biking (gravel included), from the average of all gauges. Each time block
+      <dd>A rough guide for running and biking (gravel included), from the average of the 7 gauges nearest Mountain View (Mountain View,
+        Rancho San Antonio, Stevens Creek Res., Sunnyvale Hamilton, Palo Alto, Maryknoll Fields, Trappers Trail). Each time block
         (morning 4-10 AM, mid day 10 AM-4 PM, afternoon 4-10 PM, Pacific time) gets the worse of three checks.
         <b>Ground wetness:</b> rain in the 24 hours before the block, plus half of the rain 24-48 hours before, plus a
         quarter of the rain 48-72 hours before (measured rain, then forecast rain for hours not measured yet). Running:
@@ -378,7 +379,7 @@
         under 0.05 good, under 0.15 fair, otherwise poor. Only gauges with data for all 72 hours are averaged (the number
         used shows when you hover over or tap a rating). <b>Season adjustment:</b> early in the water year the dry soil
         absorbs the first storms, so the ground-wetness limits are multiplied while the season has been dry. The season
-        total is the average of all gauges' rain since Oct 1; under 2.0 in, biking's limits are 2.5 times the above;
+        total is the average of those gauges' rain since Oct 1; under 2.0 in, biking's limits are 2.5 times the above;
         2.0 to under 5.0 in, 1.5 times; 5.0 in or more, the limits above. Running isn't adjusted (1.0 at every step).
         If the season total isn't known, no adjustment is made. A line under the section says when it applies. <b>Rain during the block</b> (forecast): under 0.01 in optimal;
         0.01-0.15 in good for running and fair for biking; more than 0.15 in poor. <b>Comfort</b>, from the forecast
@@ -552,6 +553,7 @@ async function loadData() {
     lat: num(g.lat),
     lon: num(g.lon),
     color: `--s${(i % 8) + 1}`,
+    dash: i >= 8 ? [6, 3] : [],  // the 8 colors repeat from the 9th gauge on, so those lines are dashed
     byHour: new Map(),
     first: null,
     last: null,
@@ -1183,16 +1185,63 @@ function placeLabels() {
     for (const { k, c } of options) { pick[i] = k; search(i + 1, cost + c); }
   })(0, 0);
 
+  // With many gauges the search above can stop early, so then try moving one label at a time to another side.
+  const chosen = best.pick ? best.pick.slice() : new Array(n).fill(0);
+  const total = () => {
+    let c = 0;
+    for (let i = 0; i < n; i++) {
+      c += choices[i][chosen[i]].cost;
+      for (let j = 0; j < i; j++) c += overlap(choices[i][chosen[i]].box, choices[j][chosen[j]].box) * 2;
+    }
+    return c;
+  };
+  let cost = total();
+  for (let pass = 0; pass < 10; pass++) {
+    let better = false;
+    for (let i = 0; i < n; i++) {
+      const was = chosen[i];
+      for (let k = 0; k < 4; k++) {
+        if (k === chosen[i]) continue;
+        const keep = chosen[i];
+        chosen[i] = k;
+        const c = total();
+        if (c < cost - 1e-9) { cost = c; better = true; } else chosen[i] = keep;
+      }
+      if (chosen[i] !== was) better = true;
+    }
+    if (!better) break;
+  }
+
+  // If labels still cover each other or other icons (a crowded map on a narrow screen), hide the later
+  // ones in gauges.csv order. Their names show on hover, and tapping the icon opens the gauge's card.
+  const shown = [];
+  const drawn = points.map(p => ({ x1: p.x - GAUGE_W / 2, y1: p.y - GAUGE_H, x2: p.x + GAUGE_W / 2, y2: p.y }));  // icons without the margin
+  const inMap = b => b.x1 >= LABEL_MARGIN && b.y1 >= LABEL_MARGIN && b.x2 <= size.x - LABEL_MARGIN && b.y2 <= size.y - LABEL_MARGIN;
+  const isClear = (i, box) => drawn.every((d, j) => j === i || overlap(box, d) === 0) && shown.every(o => overlap(box, o) === 0);
+  const visible = chosen.map((k, i) => {
+    // The chosen side if it's clear, otherwise the cheapest other side that is clear and inside the map.
+    const order = [k, ...[0, 1, 2, 3].filter(x => x !== k).sort((a, b) => choices[i][a].cost - choices[i][b].cost)];
+    const ok = order.find((x, n) => isClear(i, choices[i][x].box) && (n === 0 || inMap(choices[i][x].box)));
+    if (ok === undefined) return false;
+    chosen[i] = ok;
+    shown.push(choices[i][ok].box);
+    return true;
+  });
+
   state.markers.forEach((m, i) => {
-    const o = choices[i][best.pick ? best.pick[i] : 0];
+    const o = choices[i][chosen[i]];
     m.unbindTooltip();
+    if (!visible[i]) {
+      m.bindTooltip(m.gauge.label.replace(/&/g, "&amp;").replace(/</g, "&lt;"), { direction: o.dir, offset: o.offset, className: "gauge-label" });
+      return;
+    }
     const html = texts[i].map(t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;")).join("<br>") +
       '<span class="tap-cue" aria-hidden="true">i</span>';
     m.bindTooltip(html, { permanent: true, interactive: true, direction: o.dir, offset: o.offset, className: "gauge-label" });
     m.getTooltip().on("click", () => m.openPopup());  // tapping the label opens the same card as the icon
   });
-  // Without overlaps the total is only the small side preferences (at most 3 per label).
-  return best.cost <= 3 * n;
+  // Without overlaps the total is only the small side preferences (at most 3 per label), and no label is hidden.
+  return cost <= 3 * n && visible.every(Boolean);
 }
 
 function popupContent(g) {
@@ -1268,6 +1317,18 @@ function timeOptions(hoursList, hours) {
   };
 }
 
+// A small picture of a dashed line, for the legend.
+function dashSwatch(color) {
+  const ratio = window.devicePixelRatio || 1, c = document.createElement("canvas");
+  c.width = 20 * ratio; c.height = 8 * ratio;
+  c.style.width = "20px"; c.style.height = "8px";
+  const ctx = c.getContext("2d");
+  ctx.scale(ratio, ratio);
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([6, 3]);
+  ctx.beginPath(); ctx.moveTo(0, 4); ctx.lineTo(20, 4); ctx.stroke();
+  return c;
+}
+
 function renderTotalsChart() {
   const hours = state.hours.totals;
   const list = windowHours(hours);
@@ -1277,12 +1338,16 @@ function renderTotalsChart() {
     borderColor: css(g.color),
     backgroundColor: css(g.color),
     borderWidth: 2,
+    borderDash: g.dash,
+    pointStyle: g.dash.length ? dashSwatch(css(g.color)) : "circle",  // the legend shows a dashed line for dashed gauges
     pointRadius: 0,
     pointHoverRadius: 4,
     spanGaps: false,
   }));
   const options = timeOptions(list, hours);
   options.plugins.legend.position = "bottom";
+  // Each gauge's own marker: a dot, or a short dashed line for the dashed gauges.
+  options.plugins.legend.labels = { ...options.plugins.legend.labels, pointStyle: undefined };
   options.plugins.tooltip.callbacks.label = c => `${c.dataset.label}: ${c.raw == null ? "no data" : c.raw.toFixed(2) + " in"}`;
   if (state.charts.totals) state.charts.totals.destroy();
   state.charts.totals = new Chart(document.getElementById("totals-chart"), { type: "line", data: { labels: list.map(String), datasets }, options });
@@ -1653,6 +1718,8 @@ function renderForecastChart() {
 
 // ======== Trail conditions: all the numbers that decide the ratings (tune them here) ========
 const TRAIL = {
+  // The gauges whose rain and forecasts are averaged for the ratings (by id). Other gauges are ignored here.
+  GAUGES: ["6121", "6140", "6100", "6048", "6129", "6144", "6142"],
   RATINGS: ["Optimal", "Good", "Fair", "Poor"],  // best to worst; ratings are stored as 0-3
   BLOCKS: [                                       // Pacific local clock hours
     { name: "Morning", start: 4, end: 10, label: "4-10 AM", when: "morning" },
@@ -1666,7 +1733,7 @@ const TRAIL = {
   WETNESS: { running: [0.10, 0.50, 1.00], biking: [0.02, 0.05, 0.15] },
   // Season adjustment of the WETNESS limits: early in the water year the dry soil absorbs the first storms,
   // so the limits are multiplied while the season has been dry. The season total is the average, across the
-  // gauges with data, of rain since Oct 1 (the "Season to date" numbers). The first step whose BELOW is
+  // GAUGES above with data, of rain since Oct 1 (the "Season to date" numbers). The first step whose BELOW is
   // greater than the season total applies. If the season total isn't known, the multiplier is 1.
   SEASON_ADJUST: [
     { BELOW: 2.0, running: 1.0, biking: 2.5 },       // under 2.0 in
@@ -1685,6 +1752,14 @@ const TRAIL = {
 
 const SPORTS = [["running", "Running"], ["biking", "Biking"]];
 
+// The gauges used for trail conditions (TRAIL.GAUGES) that have data.
+function trailGauges() {
+  return state.gauges.filter(g => g.ok && TRAIL.GAUGES.includes(g.id));
+}
+function trailNames() {
+  return TRAIL.GAUGES.map(id => (state.gauges.find(g => g.id === id) || { label: id }).label).join(", ");
+}
+
 // The three checks. Values are compared as shown on the page (inches to 2 decimals, whole degrees).
 function rateWetness(sport, inches, multiplier = 1) {
   // The base limits times the season multiplier (rounded to remove floating-point noise).
@@ -1697,7 +1772,7 @@ function seasonAdjustment(totalOverride) {
   let total = totalOverride;
   let gauges = null;
   if (total === undefined) {
-    const values = state.gauges.filter(g => g.ok).map(g => seasonTotal(g).value).filter(v => v != null);
+    const values = trailGauges().map(g => seasonTotal(g).value).filter(v => v != null);
     gauges = values.length;
     total = values.length ? Math.round(values.reduce((a, v) => a + v, 0) / values.length * 100) / 100 : null;
   }
@@ -1761,7 +1836,7 @@ function forecastPeriods(id) {
 // The inputs for one block, averaged over gauges. useForecast=false: ground wetness only, as measured so far.
 function blockInputs(startH, endH, useForecast) {
   const wet = [], rain = [], feels = [];
-  for (const g of state.gauges.filter(x => x.ok)) {
+  for (const g of trailGauges()) {
     const periods = useForecast ? forecastPeriods(g.id) : [];
     const anchor = useForecast ? startH : Math.min(startH, g.last + 1);
     const hourRain = h => {
@@ -1852,7 +1927,7 @@ function renderTrail() {
   const todayBox = document.getElementById("trail-today");
   todayBox.textContent = ""; next.textContent = ""; notes.textContent = "";
   const note = text => notes.appendChild(el("p", text));
-  if (!state.gauges.some(g => g.ok)) {
+  if (!trailGauges().length) {
     todayBox.appendChild(el("p", "Trail conditions need the hourly rain data, which couldn't be loaded right now.", "message"));
     next.hidden = true;
     return;
@@ -1986,7 +2061,7 @@ function renderTrail() {
   }
   if (!useForecast) note("The forecast isn't available right now, so ratings use the ground wetness measured so far only.");
   else if (!anyFeels) note("Temperature isn't available yet, so ratings use ground wetness and rain only.");
-  note("Estimate from the average of all gauges. Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.");
+  note(`Estimate from the average of ${TRAIL.GAUGES.length} gauges near Mountain View (${trailNames()}). Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.`);
 }
 
 // ---------- controls ----------
