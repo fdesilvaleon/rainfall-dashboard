@@ -2058,9 +2058,12 @@ function renderTrail(regionId) {
   if (!useForecast) {
     next.appendChild(el("p", "The forecast isn't available right now, so there are no ratings for the next 2 days.", "message"));
   } else {
+    // The day's forecast rain and chance, averaged over the same gauges as the ratings (TRAIL.GAUGES, or the region's).
     const dayRain = d => {
       const vals = [], chances = [];
-      for (const entry of Object.values(state.forecast.gauges)) {
+      for (const id of region.gauges) {
+        const entry = state.forecast.gauges[id];
+        if (!entry) continue;
         const x = (entry.days || []).find(y => y.date === d);
         if (x && x.rain_in != null) vals.push(x.rain_in);
         if (x && x.chance_max_pct != null) chances.push(x.chance_max_pct);
