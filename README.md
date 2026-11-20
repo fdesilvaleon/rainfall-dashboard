@@ -472,6 +472,15 @@ runs). To rebuild that way: on a new branch, copy it to
 or `regions.json`. It builds the files, commits them and the report to that
 branch, and runs the tests. Delete the workflow file again before merging.
 
+## Visit counts
+
+The page loads GoatCounter's script (`gc.zgo.at/count.js`), which counts page
+views without cookies or personal data. The counts are at
+https://fede-trails.goatcounter.com (only the owner can see them). To leave out
+your own visits, open the site once in each browser you use with
+`#toggle-goatcounter` added to the address, for example
+`https://fdesilvaleon.github.io/rainfall-dashboard/#toggle-goatcounter`.
+
 ## Attribution and disclaimer
 
 Data: Santa Clara Valley Water ALERT system
