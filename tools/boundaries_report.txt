@@ -1,3 +1,8 @@
+Report of the last build (2026-11-20). This run rebuilt only the city areas (Overpass was overloaded, and the
+park outlines were already final); the cities were trimmed with the saved data/parks.geojson. The park details
+(matches, areas, pieces, nearest gauges) are in the previous version of this file in the git history, and the
+Midpen check is in tools/midpen_comparison.txt.
+
 Trimming the cities with the saved data/parks.geojson (17 parks)
 overpass_i_280.json: HTTP Error 502: Bad Gateway; trying again in 60 seconds
 Wrote data/cities.geojson: 5 features, 12 KB
