@@ -1,14 +1,7 @@
-overpass_parks.json: <urlopen error [Errno 101] Network is unreachable>; trying again in 60 seconds
-overpass_parks.json: https://overpass-api.de/api/interpreter failed (<urlopen error [Errno 101] Network is unreachable>)
-overpass_parks.json: The read operation timed out; trying again in 60 seconds
-overpass_parks.json: https://overpass.kumi.systems/api/interpreter failed (The read operation timed out)
-overpass_parks.json: The read operation timed out; trying again in 60 seconds
-overpass_parks.json: https://overpass.private.coffee/api/interpreter failed (The read operation timed out)
-parks: FAILED to download or build (no Overpass server answered (The read operation timed out)); parks.geojson left unchanged
 Trimming the cities with the saved data/parks.geojson (17 parks)
 overpass_foothill_boulevard.json: <urlopen error [Errno 101] Network is unreachable>; trying again in 60 seconds
 overpass_foothill_boulevard.json: https://overpass-api.de/api/interpreter failed (<urlopen error [Errno 101] Network is unreachable>)
-overpass_foothill_boulevard.json: The read operation timed out; trying again in 60 seconds
+overpass_foothill_boulevard.json: HTTP Error 504: Gateway Timeout; trying again in 60 seconds
 overpass_foothill_boulevard.json: https://overpass.kumi.systems/api/interpreter failed (The read operation timed out)
 overpass_foothill_boulevard.json: HTTP Error 504: Gateway Timeout; trying again in 60 seconds
 overpass_foothill_boulevard.json: https://overpass.private.coffee/api/interpreter failed (The read operation timed out)
