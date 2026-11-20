@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mountain View Area Rainfall</title>
-<meta name="description" content="Rainfall at Santa Clara Valley Water ALERT rain gauges around Mountain View.">
+<title>Trail Conditions | Peninsula &amp; South Bay</title>
+<meta name="description" content="Running and biking trail conditions for the Peninsula and South Bay, from Santa Clara Valley Water rain gauges and National Weather Service forecasts.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous">
 <style>
@@ -80,6 +80,7 @@
   .wrap { max-width: 1000px; margin: 0 auto; padding: 0 16px; }
   header { padding: 24px 0 12px; }
   h1 { margin: 0; font-size: 1.6rem; line-height: 1.25; }
+  .tagline { margin: 4px 0 0; color: var(--text-2); font-size: 1.05rem; line-height: 1.4; }
   .updated { margin: 4px 0 0; color: var(--text-2); }
   h2 { font-size: 1.15rem; margin: 0 0 4px; }
   h3 { font-size: 1rem; margin: 20px 0 4px; }
@@ -287,7 +288,8 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>Mountain View Area Rainfall</h1>
+    <h1>Trail Conditions</h1>
+    <p class="tagline">Running and biking conditions from local rain gauges and forecasts.</p>
     <p class="updated">Data updated: <span id="updated">loading…</span></p>
   </header>
 
@@ -396,8 +398,8 @@
       <dt>% of average season</dt>
       <dd>Season to date as a share of the average total for a whole water year.</dd>
       <dt>Trail conditions</dt>
-      <dd>A rough guide for running and biking (gravel included), from the average of the 7 gauges nearest Mountain View (Mountain View,
-        Rancho San Antonio, Stevens Creek Res., Sunnyvale Hamilton, Palo Alto, Maryknoll Fields, Trappers Trail). Each time block
+      <dd>A rough guide for running and biking (gravel included) in the selected trail region, from the average of
+        that region's gauges (pick the region on the trail conditions map or with the Region menu). Each time block
         (morning 4-10 AM, mid day 10 AM-4 PM, afternoon 4-10 PM, Pacific time) gets the worse of three checks.
         <b>Ground wetness:</b> rain in the 24 hours before the block, plus half of the rain 24-48 hours before, plus a
         quarter of the rain 48-72 hours before (measured rain, then forecast rain for hours not measured yet). Running:
@@ -412,7 +414,9 @@
         "feels like" temperature (which already includes wind chill and heat index): running optimal 45-68°F, good
         38-45 or 68-78, fair 30-38 or 78-88, poor outside that; biking optimal 50-72°F, good 42-50 or 72-82, fair 34-42
         or 82-92, poor outside that. At an exact boundary the better rating applies. Today's big rating is the worst
-        of the blocks still ahead; blocks that have ended are marked "Past".</dd>
+        of the blocks still ahead; blocks that have ended are marked "Past". The Valley floor is pavement, so ground
+        wetness isn't used there: each block gets the worse of rain during the block and comfort, and is at best fair
+        for 12 hours after 0.02 in of rain and poor for 6 hours after 0.15 in.</dd>
       <dt>Last 7 days and next 7 days</dt>
       <dd>Solid bars: rain measured by the gauge on each of the last 7 days, added up from the hourly data, midnight to
         midnight in PST (the district's time). Striped bars: the National Weather Service's expected rain for the 2.5 km area

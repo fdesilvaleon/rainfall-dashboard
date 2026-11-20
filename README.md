@@ -1,13 +1,15 @@
-# Mountain View Rainfall Dashboard
+# Trail Conditions
 
-This project collects rainfall readings for the Mountain View area from the
-Santa Clara Valley Water District's ALERT rain gauges, using the district's
-[Surface Water Data API](https://alertdata.valleywater.org/api.html).
+Trail Conditions rates running and biking conditions for the Peninsula and South
+Bay, from the Santa Clara Valley Water District's ALERT rain gauges (using the
+district's [Surface Water Data API](https://alertdata.valleywater.org/api.html))
+and National Weather Service forecasts. The rainfall data and charts behind the
+ratings are still part of the page.
 
 **Dashboard:** https://fdesilvaleon.github.io/rainfall-dashboard/
 
 The dashboard (`index.html`) shows a trail conditions map and ratings for each
-trail region, how each gauge's season compares with normal and with last year
+trail region, and the rainfall itself: how each gauge's season compares with normal and with last year
 (a chart for all gauges, and numbers and a water-year chart for a chosen gauge),
 hourly rain, and recent totals. The map uses standard OpenStreetMap tiles
 (tile.openstreetmap.org), shown in gray at low contrast. It is hosted free on GitHub Pages and reads the data files in this
