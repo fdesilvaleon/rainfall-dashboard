@@ -133,8 +133,56 @@ def midpen_official():
         print(f"  {bb.area_km2(g) if g else 0:7.2f} km2  pieces {bb.pieces(g) if g else 0}  {props}")
 
 
+OURS_TO_MIDPEN = {
+    "Rancho San Antonio Open Space Preserve": "Rancho San Antonio", "Russian Ridge Open Space Preserve": "Russian Ridge",
+    "Skyline Ridge Open Space Preserve": "Skyline Ridge", "Monte Bello Open Space Preserve": "Monte Bello",
+    "Long Ridge Open Space Preserve": "Long Ridge", "Windy Hill Open Space Preserve": "Windy Hill",
+    "Los Trancos Open Space Preserve": "Los Trancos",
+}
+
+
+def official_preserves():
+    from shapely.geometry import shape
+    q = urllib.parse.urlencode({"where": "1=1", "outFields": "PRESERVE,ACRES", "outSR": 4326, "f": "geojson"})
+    fc = json.loads(get(f"{MIDPEN_LAYER}/0/query?{q}"))
+    return {f["properties"]["PRESERVE"]: (shape(f["geometry"]).buffer(0), f["properties"]["ACRES"]) for f in fc["features"]}
+
+
+def compare_with_official():
+    from shapely.geometry import shape
+    section("Built Midpen outlines compared with Midpen's official Preserve Boundary layer (used only for checking)")
+    official = official_preserves()
+    ours = {f["properties"]["name"]: shape(f["geometry"]) for f in json.loads(bb.PARKS_OUT.read_text())["features"]}
+    print(f"{'park':40} {'ours':>7} {'official':>8} {'acres':>6} {'overlap':>7} {'ours only':>9} {'official only':>13}")
+    for name, pres in OURS_TO_MIDPEN.items():
+        if name not in ours or pres not in official:
+            print(f"{name:40} missing ({name in ours}, {pres in official})")
+            continue
+        a, (b, acres) = bb.transform(bb.TO_M, ours[name]), official[pres]
+        b = bb.transform(bb.TO_M, b)
+        inter, union = a.intersection(b).area, a.union(b).area
+        print(f"{name:40} {a.area/1e6:7.2f} {b.area/1e6:8.2f} {acres:6.0f} {inter/union:7.0%} {a.difference(b).area/1e6:9.2f} {b.difference(a).area/1e6:13.2f}")
+    section("Other Midpen-operated OpenStreetMap areas: which official preserve they fall in")
+    s, w, n, e = bb.AREA
+    q = (f'[out:json][timeout:120];(relation["operator"~"Midpeninsula|Midpen",i]["boundary"]({s},{w},{n},{e});'
+         f'way["operator"~"Midpeninsula|Midpen",i]["boundary"]({s},{w},{n},{e}););out geom;')
+    els = bb.overpass(q, None, "diag_midpen")["elements"]
+    used = {f["properties"]["source"] for f in json.loads(bb.PARKS_OUT.read_text())["features"]}
+    for el in els:
+        g = bb.element_geometry(el)
+        if g is None or bb.area_km2(g) < 0.05:
+            continue
+        gm = bb.transform(bb.TO_M, g)
+        best = max(((bb.transform(bb.TO_M, og).intersection(gm).area / gm.area, pres) for pres, (og, _) in official.items()), default=(0, None))
+        if best[0] < 0.2:
+            continue
+        tag = f"{el['type']} {el['id']}"
+        inuse = "already used" if any(tag in u for u in used) else "NOT used"
+        print(f"  {tag:18} {el.get('tags', {}).get('name', '(no name)')[:50]:50} {bb.area_km2(g):6.2f} km2  {best[0]:4.0%} inside official {best[1]}  [{inuse}]")
+
+
 if __name__ == "__main__":
-    for step in (midpen_official, osm_candidates, i280, arcgis_search, midpen_acreage):
+    for step in (compare_with_official, midpen_acreage):
         try:
             step()
         except Exception as e:

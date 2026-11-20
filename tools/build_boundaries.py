@@ -168,8 +168,11 @@ def fetch_parks(parks, cache):
     words = sorted({m for p in parks for m in p["match"]}, key=len)
     pattern = "|".join(re.escape(w) for w in words)
     s, w, n, e = AREA
+    pinned = [x for p in parks for x in p.get("also", []) + ([p["osm"]] if p.get("osm") else []) if re.fullmatch(r"(relation|way)/\d+", x)]
+    extra = "".join(f"{x.split('/')[0]}({x.split('/')[1]});" for x in pinned)
+    # (Names under "also" contain a match name, so the name search below already finds them.)
     query = (f'[out:json][timeout:180];(relation["name"~"{pattern}",i]({s},{w},{n},{e});'
-             f'way["name"~"{pattern}",i]({s},{w},{n},{e}););out geom;')
+             f'way["name"~"{pattern}",i]({s},{w},{n},{e});{extra});out geom;')
     return overpass(query, cache, "overpass_parks.json")["elements"]
 
 
@@ -184,8 +187,23 @@ def match_park(park, elements):
     for name in park["match"]:
         found = [el for el in parklike if el.get("tags", {}).get("name", "").lower() == name.lower()]
         if found:
-            return found, found[0]["tags"]["name"]
+            return found + also_elements(park, elements, found), found[0]["tags"]["name"]
     return [], None
+
+
+def also_elements(park, elements, already):
+    """Extra pieces listed under "also": exact names, or "relation/123" / "way/123"."""
+    out = []
+    for item in park.get("also", []):
+        if re.fullmatch(r"(relation|way)/\d+", item):
+            kind, num = item.split("/")
+            hits = [el for el in elements if el["type"] == kind and str(el["id"]) == num]
+        else:
+            hits = [el for el in elements if el.get("tags", {}).get("name", "").lower() == item.lower()]
+        if not hits:
+            BROKEN.append(f"{park['name']}: extra piece {item!r} not found")
+        out += [el for el in hits if el not in already and el not in out]
+    return out
 
 
 def build_parks(cfg, cache, report):

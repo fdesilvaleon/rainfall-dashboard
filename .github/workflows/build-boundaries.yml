@@ -33,11 +33,6 @@ jobs:
           python-version: "3.12"
       - name: Install map libraries
         run: pip install shapely pyproj pyshp
-      - name: Diagnose (temporary)
-        run: |
-          set +e
-          python tools/diagnose_boundaries.py > tools/boundaries_diagnosis.txt 2>&1
-          cat tools/boundaries_diagnosis.txt
       - name: Build boundary files
         run: |
           mkdir -p downloads
@@ -46,6 +41,11 @@ jobs:
           echo "BUILD_STATUS=$?" >> "$GITHUB_ENV"
           cat tools/boundaries_report.txt
           { echo '```'; cat tools/boundaries_report.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Compare with official data (temporary)
+        run: |
+          set +e
+          python tools/diagnose_boundaries.py > tools/boundaries_diagnosis.txt 2>&1
+          cat tools/boundaries_diagnosis.txt
       - name: Keep the downloads for checking
         if: always()
         uses: actions/upload-artifact@v4
