@@ -1,0 +1,43 @@
+{
+ "notes": [
+  "Trail regions for the planned trail-region map, and the parks and cities in each.",
+  "To move a park or city to another region, change its \"region\" (one line). Then run python tools/build_boundaries.py to rebuild data/parks.geojson and data/cities.geojson (see README, Boundary data).",
+  "region must be one of the ids under \"regions\".",
+  "Parks: \"match\" lists OpenStreetMap names (case-insensitive) to try in turn; the first that finds anything is used. \"osm\" pins the exact OpenStreetMap object instead.",
+  "\"also\" adds more OpenStreetMap pieces to a park, by exact name or as \"relation/123\" or \"way/123\": OpenStreetMap maps Midpen preserves as an open part plus separately named closed areas.",
+  "Cities: \"east_of\" is the road the city is cut along (only the bay side is kept, minus parks): \"I-280\" or \"Foothill Boulevard\" (the lines are defined in tools/build_boundaries.py, CUT_LINES).",
+  "Cities: \"census_geoid\" is the city's 7-digit id in the US Census places file (names alone are ambiguous: there is also a Mountain View in Contra Costa County)."
+ ],
+ "regions": [
+  {"id": "foothills", "name": "Peninsula foothills"},
+  {"id": "skyline", "name": "Skyline ridge"},
+  {"id": "south", "name": "South Valley"},
+  {"id": "valley", "name": "Valley floor"}
+ ],
+ "parks": [
+  {"name": "Pearson-Arastradero Preserve", "region": "foothills", "match": ["Enid Pearson-Arastradero Preserve", "Pearson-Arastradero Preserve", "Arastradero Preserve"]},
+  {"name": "Foothills Park", "region": "foothills", "match": ["Foothills Nature Preserve", "Foothills Park"]},
+  {"name": "Hidden Villa", "region": "foothills", "match": ["Hidden Villa"]},
+  {"name": "Rancho San Antonio Open Space Preserve", "region": "foothills", "match": ["Rancho San Antonio Open Space Preserve", "Rancho San Antonio Preserve"]},
+  {"name": "Rancho San Antonio County Park", "region": "foothills", "match": ["Rancho San Antonio County Park"]},
+  {"name": "Stevens Creek County Park", "region": "foothills", "match": ["Stevens Creek County Park"]},
+  {"name": "Windy Hill Open Space Preserve", "region": "skyline", "match": ["Windy Hill Open Space Preserve", "Windy Hill Preserve"], "also": ["Windy Hill Open Space Preserve (closed areas)"]},
+  {"name": "Wunderlich County Park", "region": "skyline", "match": ["Wunderlich County Park", "Wunderlich Park"]},
+  {"name": "Huddart County Park", "region": "skyline", "match": ["Huddart County Park", "Huddart Park"]},
+  {"name": "Russian Ridge Open Space Preserve", "region": "skyline", "match": ["Russian Ridge Open Space Preserve", "Russian Ridge Preserve"], "also": ["Russian Ridge Open Space Preserve (closed area)"]},
+  {"name": "Skyline Ridge Open Space Preserve", "region": "skyline", "match": ["Skyline Ridge Open Space Preserve", "Skyline Ridge Preserve"], "also": ["Skyline Ridge Open Space Preserve (closed area)"]},
+  {"name": "Long Ridge Open Space Preserve", "region": "skyline", "match": ["Long Ridge Open Space Preserve", "Long Ridge Preserve"], "also": ["Long Ridge Open Space Preserve (closed areas)"]},
+  {"name": "Monte Bello Open Space Preserve", "region": "skyline", "match": ["Monte Bello Open Space Preserve", "Monte Bello Preserve"], "also": ["relation/6197086"]},
+  {"name": "Los Trancos Open Space Preserve", "region": "skyline", "match": ["Los Trancos Open Space Preserve", "Los Trancos Preserve"]},
+  {"name": "Almaden Quicksilver County Park", "region": "south", "match": ["Almaden Quicksilver County Park", "Almaden Quicksilver"]},
+  {"name": "Calero County Park", "region": "south", "match": ["Calero County Park", "Calero Park"]},
+  {"name": "Santa Teresa County Park", "region": "south", "match": ["Santa Teresa County Park"]}
+ ],
+ "cities": [
+  {"name": "Palo Alto", "region": "valley", "census_geoid": "0655282", "east_of": "I-280"},
+  {"name": "Mountain View", "region": "valley", "census_geoid": "0649670", "east_of": "I-280"},
+  {"name": "Sunnyvale", "region": "valley", "census_geoid": "0677000", "east_of": "I-280"},
+  {"name": "Los Altos", "region": "valley", "census_geoid": "0643280", "east_of": "I-280"},
+  {"name": "Cupertino", "region": "valley", "census_geoid": "0617610", "east_of": "Foothill Boulevard"}
+ ]
+}

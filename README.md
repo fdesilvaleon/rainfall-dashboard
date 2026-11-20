@@ -364,6 +364,85 @@ isn't there yet, the comfort check is skipped. **All the numbers live in one
 commented block, `TRAIL`, near the top of the trail-conditions part of the
 script in `index.html`**, so they can be tuned in one place.
 
+## Boundary data
+
+Park outlines and city areas for the planned trail-region map. These are static
+files: nothing updates them automatically, and the page doesn't use them yet.
+
+- **`data/regions.json`**: the four regions (`foothills` Peninsula foothills,
+  `skyline` Skyline ridge, `south` South Valley, `valley` Valley floor) and the
+  parks and cities in each, one line per park or city. To move a park to another
+  region, change its `"region"` and rebuild.
+- **`data/parks.geojson`**: one feature per park, with properties `name`,
+  `region` and `source` (the OpenStreetMap objects it came from). A park in
+  several separate pieces is one feature with several polygons.
+- **`data/cities.geojson`**: the Valley floor cities, same properties. These are
+  **not** the full city limits: each city keeps only its flat part, east of a
+  dividing road (the bay side), with every park in `parks.geojson` cut out, and
+  leftover slivers under 5 hectares dropped. Palo Alto, Mountain View, Sunnyvale
+  and Los Altos are cut along **Interstate 280**. **Cupertino** is cut along
+  **Foothill Boulevard** instead, because most of the city lies south-west of
+  I-280; north and south of the boulevard's ends the cut continues straight north
+  and south. Each city's road is its `"east_of"` in `regions.json`; the roads are
+  defined in `CUT_LINES` in `tools/build_boundaries.py`.
+- **`tools/boundaries_report.txt`**: the report from the last build (what was
+  matched, area, pieces, nearest gauge, full and trimmed city areas, overlaps).
+- **`tools/midpen_comparison.txt`**: the check of the Midpen preserve outlines
+  against Midpen's official boundaries (areas and overlap).
+
+Shapes are simplified to about 20 m and coordinates rounded to 5 decimals (about 1 m).
+
+**Midpen preserves in OpenStreetMap** are mapped as an open part plus separately
+named closed areas (for example "Russian Ridge Open Space Preserve (closed area)",
+and one unnamed area for Monte Bello). The `"also"` list on a park's line in
+`regions.json` merges those pieces in. The results were checked against Midpen's
+official "Preserve Boundary" layer; that layer comes with a warranty disclaimer
+but no license allowing republication, so it is used only for that check, not
+published here.
+
+**Sources, licenses and the attribution to show:**
+
+- **Parks, the I-280 line and the park cut-outs in the city areas: OpenStreetMap**,
+  through the Overpass API. License:
+  [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
+  Show: **"© OpenStreetMap contributors"**, linked to
+  https://www.openstreetmap.org/copyright (the dashboard's map already shows this
+  for its tiles). The ODbL is share-alike: `data/parks.geojson` and
+  `data/cities.geojson` are derived databases, so they stay under the ODbL, and
+  anyone may reuse them on the same terms.
+- **City limits: US Census Bureau**, 2025 cartographic boundary file for
+  California places (`cb_2025_06_place_500k`, www2.census.gov). Public domain (a
+  work of the US government); no attribution is required. Suggested credit:
+  "City limits: U.S. Census Bureau, 2025 Cartographic Boundary Files."
+- **Foothill Boulevard line (Cupertino's cut): US Census Bureau**, 2025 TIGER/Line
+  roads for Santa Clara County (`tl_2025_06085_roads`, "N Foothill Blvd" and
+  "S Foothill Blvd"). Public domain, like the city limits. (Overpass kept timing
+  out on this road, and the Census file can be downloaded from anywhere.)
+
+**Rebuilding** (by hand, never in the hourly workflow):
+
+    pip install shapely pyproj pyshp
+    python tools/build_boundaries.py              # parks, then the trimmed cities
+    python tools/build_boundaries.py --untrimmed  # full city limits instead of the trimmed ones
+    python -m unittest test_boundaries
+
+The script makes one Overpass request for the parks and one for I-280 (trying two
+other public Overpass servers if the main one fails), and downloads two Census
+files (city limits, and the county's roads for Foothill Boulevard; `--cache-dir DIR` keeps the downloads and reuses them).
+If the park download fails, the cities are trimmed with the park outlines already saved. Parks are found by
+the names under `"match"` in `data/regions.json`; to fix a wrong match, add
+`"osm": "relation/123"` (or `way/123`) to that park's line, and list extra pieces
+under `"also"`.
+
+The Overpass API can't be reached from the cloud environment these files were
+made in, so they were built on GitHub's machines. The workflow that did it is kept
+as **`tools/build-boundaries.workflow.yml`** (GitHub ignores it there, so it never
+runs). To rebuild that way: on a new branch, copy it to
+`.github/workflows/build-boundaries.yml`, change `add-boundaries` in its
+`branches:` line to the new branch's name, and push a change to the build script
+or `regions.json`. It builds the files, commits them and the report to that
+branch, and runs the tests. Delete the workflow file again before merging.
+
 ## Attribution and disclaimer
 
 Data: Santa Clara Valley Water ALERT system
