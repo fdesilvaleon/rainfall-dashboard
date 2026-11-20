@@ -386,8 +386,9 @@ best Fair; 0.15 in or more in the 6 hours before, Poor (`TRAIL.ROAD_WET` in
 or tapping a region (or Tab, then Enter) opens a card with its parks or cities,
 the rating and its reason, the three time blocks, ground wetness and the number
 of gauges. Clicking or tapping a region (or its label) also selects it for the
-Trail conditions tiles; the selected region has a thick dark outline and
-"selected" in its label. The two shape files add about 51 KB (about 13 KB compressed); if they
+Trail conditions tiles; the selected region has a thick dark outline and a
+check mark in its label. Each label is a pill in the rating's colors, placed in
+open space near its region and joined to it by a thin line. The two shape files add about 51 KB (about 13 KB compressed); if they
 can't be loaded, a short message replaces the map and the rest of the page works.
 
 ## Boundary data
