@@ -163,46 +163,11 @@
     margin: 0 0 16px;
   }
 
-  /* map: a plain location reference */
-  #map { height: 440px; border-radius: 8px; background: #f2f2f0; }  /* tall enough for all gauges at a close zoom */
-  .leaflet-tooltip.gauge-label {
-    background: rgba(255, 255, 255, 0.88);
-    color: #1d1d1b;
-    border: 0;
-    box-shadow: none;
-    border-radius: 4px;
-    padding: 1px 5px;
-    text-align: center;
-    font: 600 12px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    white-space: nowrap;
-  }
-  .leaflet-tooltip.gauge-label::before { display: none; }
-  /* The small "i" in a circle at the end of each label: a hint that the label can be tapped for details. */
-  .gauge-label .tap-cue {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    margin-left: 4px;
-    border: 1.2px solid #1d1d1b;
-    border-radius: 50%;
-    font: italic 700 9px/9.6px Georgia, "Times New Roman", serif;
-    text-align: center;
-    vertical-align: 0;
-  }
   /* OpenStreetMap tiles, made light and quiet. If they fail, the map's plain light background shows. */
   .quiet-tiles { filter: grayscale(1) contrast(0.42) brightness(1.4); }
   .leaflet-container .quiet-tiles img.leaflet-tile { mix-blend-mode: normal; }  /* avoids light seams between tiles on high-resolution screens (overrides Leaflet's own setting) */
-  .gauge-icon { background: none; border: 0; display: flex; align-items: flex-end; justify-content: center; }
-  .gauge-icon svg { display: block; margin-bottom: 4px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.35)); }
-  .gauge-icon:focus { outline: none; }
-  .gauge-icon:focus-visible svg { outline: 2px solid #2a78d6; outline-offset: 2px; border-radius: 2px; }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--text); }
   .leaflet-popup-content { margin: 12px 14px; font-size: 0.9rem; line-height: 1.4; }
-  .pop h4 { margin: 0 0 6px; font-size: 1rem; }
-  .pop dl { display: grid; grid-template-columns: auto auto; gap: 2px 12px; margin: 0 0 8px; }
-  .pop dt { color: var(--text-2); }
-  .pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-  .pop a { font-weight: 600; }
 
   /* Trail conditions map */
   .sport-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 0 0 10px; }
@@ -309,7 +274,6 @@
     .trail-table { display: none; }
     .trail-mobile { display: block; }
     h1 { font-size: 1.35rem; }
-    #map { height: 480px; }  /* tall enough to spread the gauges out for their labels */
     #trail-map { height: 420px; }
     .tmap-card { position: static; width: auto; max-width: none; margin: 8px 0 0; box-shadow: none; }  /* below the map on phones */
     .chart-box { height: 260px; }
@@ -334,12 +298,6 @@
   </div>
 
   <div id="error" class="error" role="alert" hidden></div>
-
-  <section class="card">
-    <h2>Rain gauge locations</h2>
-    <p class="sub">Tap a gauge for its season so far.</p>
-    <div id="map"></div>
-  </section>
 
   <section class="card" id="trail-map-section">
     <h2>Trail conditions map</h2>
@@ -1055,286 +1013,6 @@ async function renderSeasonChart() {
 function fmtSlot(md) {
   const [m, d] = md.split("-").map(Number);
   return `${MONTHS[m - 1]} ${d}`;
-}
-
-// ---------- map ----------
-
-// A simple rain gauge: a funnel on top of a narrow collecting cylinder, with measurement marks.
-// Drawn 20 x 28 px; its base is the bottom of the drawing, which sits on the gauge's location.
-const GAUGE_SVG =
-  '<svg width="20" height="28" viewBox="0 0 20 28" aria-hidden="true">' +
-  '<path d="M1.5 1.5 H18.5 L14.5 8.5 V25 Q14.5 26.5 13 26.5 H7 Q5.5 26.5 5.5 25 V8.5 Z" ' +
-  'fill="#1d1d1b" stroke="#ffffff" stroke-width="1.3" stroke-linejoin="round"/>' +
-  '<path d="M5.5 8.5 H14.5 M5.8 13 H9.5 M5.8 17 H11 M5.8 21 H9.5" stroke="#ffffff" stroke-width="1.2"/>' +
-  '</svg>';
-// The tap area is a 44 x 44 px box around the icon; the icon's base is 4 px above the box's bottom edge.
-const GAUGE_ICON_BOX = 44, GAUGE_BASE = 40, GAUGE_W = 20, GAUGE_H = 28;
-const CUE_W = 16;  // the tap cue at the end of each label: 12 px circle plus a 4 px gap
-
-function gaugeIcon() {
-  return L.divIcon({
-    className: "gauge-icon",
-    html: GAUGE_SVG,
-    iconSize: [GAUGE_ICON_BOX, GAUGE_ICON_BOX],
-    iconAnchor: [GAUGE_ICON_BOX / 2, GAUGE_BASE],  // base of the gauge on the exact location
-    tooltipAnchor: [0, -GAUGE_H / 2],               // labels line up with the middle of the icon
-    popupAnchor: [0, -GAUGE_H - 2],                 // cards open above the icon
-  });
-}
-
-function renderMap() {
-  const el_ = document.getElementById("map");
-  if (typeof L === "undefined") {
-    el_.innerHTML = '<p class="message" style="padding:24px">Sorry, the map couldn\'t be loaded. The charts below still work.</p>';
-    return;
-  }
-  // Whole zoom levels only: tiles then show at their natural size, without seams between them.
-  const map = L.map(el_, { scrollWheelZoom: false });
-  // Tiles are added after the starting view is chosen, so only that view's tiles are downloaded.
-  const tiles = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    className: "quiet-tiles",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
-  }).on("tileerror", e => { e.tile.style.visibility = "hidden"; });  // no broken-image boxes; the light background shows
-
-  const placed = state.gauges.filter(g => g.lat != null && g.lon != null);
-  state.markers = placed.map(g => {
-    const marker = L.marker([g.lat, g.lon], { icon: gaugeIcon(), title: g.name, alt: g.name, riseOnHover: true }).addTo(map);
-    marker.bindPopup(() => popupContent(g), { minWidth: 200, maxWidth: 240 });
-    marker.gauge = g;
-    return marker;
-  });
-  state.map = map;
-  state.placed = placed;
-  fitGauges();
-  tiles.addTo(map);
-  map.on("zoomend", placeLabels);
-
-  // Re-fit whenever the map changes size (window resized, page layout settling).
-  let lastSize = map.getSize();
-  const refit = () => {
-    map.invalidateSize({ animate: false });
-    const size = map.getSize();
-    if (size.x === lastSize.x && size.y === lastSize.y) return;
-    lastSize = size;
-    fitGauges();
-  };
-  if (window.ResizeObserver) new ResizeObserver(refit).observe(el_);
-  else window.addEventListener("resize", refit);
-
-  // Opening a card can slide the map to make room for it. When the card closes, go back to the
-  // starting view, unless the person moved or zoomed the map themselves in the meantime.
-  let before = null, moved = false;
-  map.on("popupopen", () => { before = state.home; moved = false; });
-  map.on("dragstart zoomstart", () => { if (before) moved = true; });
-  map.on("popupclose", () => {
-    if (before && !moved) map.setView(before.center, before.zoom, { animate: false });
-    before = null;
-  });
-}
-
-const FIT_PADDING = 40;   // px kept between the map edge and every icon's tap area
-const LABEL_MARGIN = 20;  // px kept between the map edge and every label
-
-// Show all gauges with their icons, tap areas and labels inside the map, with padding on every side.
-function fitGauges() {
-  const map = state.map, placed = state.placed;
-  if (!placed.length) {
-    map.setView([37.37, -122.08], 11, { animate: false });
-    placeLabels();
-    state.home = { center: map.getCenter(), zoom: map.getZoom() };
-    return;
-  }
-  // Padding is measured to the edge of each tap area: it reaches half its width to each side,
-  // GAUGE_BASE px above the location and the rest below.
-  const half = GAUGE_ICON_BOX / 2, below = GAUGE_ICON_BOX - GAUGE_BASE;
-  map.fitBounds(L.latLngBounds(placed.map(g => [g.lat, g.lon])), {
-    paddingTopLeft: [FIT_PADDING + half, FIT_PADDING + GAUGE_BASE],
-    paddingBottomRight: [FIT_PADDING + half, FIT_PADDING + below],
-    animate: false,
-  });
-  // Use the closest zoom (stepping out at most one more level) where every tap area and label is inside
-  // the map and no label overlaps another label or icon. If none manages both, prefer one that fits.
-  const start = map.getZoom();
-  let fallback = null;
-  for (let z = start; z >= start - 1; z -= 1) {
-    if (z !== map.getZoom()) map.setZoom(z, { animate: false });
-    const clean = placeLabels() && tapsClear(), fits = gaugesFit();
-    if (fits && clean) { fallback = null; break; }
-    if (fits && fallback === null) fallback = z;
-  }
-  if (fallback !== null) {
-    map.setZoom(fallback, { animate: false });
-    placeLabels();
-  }
-  state.home = { center: map.getCenter(), zoom: map.getZoom() };
-}
-
-// True if no icon's tap area covers part of another icon (so a tap always opens the gauge you see).
-function tapsClear() {
-  const taps = state.markers.map(m => m.getElement().getBoundingClientRect());
-  const icons = state.markers.map(m => m.getElement().querySelector("svg").getBoundingClientRect());
-  const hit = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
-  return taps.every((t, i) => icons.every((c, j) => i === j || !hit(t, c)));
-}
-
-// True if every tap area is at least FIT_PADDING and every label at least LABEL_MARGIN px from the map's edges.
-function gaugesFit() {
-  const box = state.map.getContainer().getBoundingClientRect();
-  const inside = (r, margin) => r.left >= box.left + margin - 1 && r.top >= box.top + margin - 1 &&
-                                r.right <= box.right - margin + 1 && r.bottom <= box.bottom - margin + 1;
-  return state.markers.every(m => {
-    const tip = m.getTooltip();
-    return inside(m.getElement().getBoundingClientRect(), FIT_PADDING) &&
-           (!tip || !tip.getElement() || inside(tip.getElement().getBoundingClientRect(), LABEL_MARGIN));
-  });
-}
-
-// Put each name label on the side of its icon where it overlaps least with other icons and labels.
-function placeLabels() {
-  const map = state.map;
-  if (!map || !state.markers) return;
-  const size = map.getSize();
-  const ctx = document.createElement("canvas").getContext("2d");
-  ctx.font = '600 12px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
-  const points = state.markers.map(m => map.latLngToContainerPoint(m.getLatLng()));
-  // On narrow maps (phones), labels of several words wrap onto short lines so they take less room sideways.
-  const lines = text => {
-    if (size.x >= 500) return [text];
-    const out = [];
-    for (const word of text.split(" ")) {
-      const last = out[out.length - 1];
-      if (last && ctx.measureText(`${last} ${word}`).width <= 80) out[out.length - 1] = `${last} ${word}`;
-      else out.push(word);
-    }
-    return out;
-  };
-  const texts = state.markers.map(m => lines(m.gauge.label));
-  // Each icon stands on its point: GAUGE_W wide, GAUGE_H tall. A margin keeps labels from sitting right next to other icons.
-  const margin = 6;
-  const icons = points.map(p => ({ x1: p.x - GAUGE_W / 2 - margin, y1: p.y - GAUGE_H - margin, x2: p.x + GAUGE_W / 2 + margin, y2: p.y + margin }));
-  const overlap = (a, b) => Math.max(0, Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1)) * Math.max(0, Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1));
-
-  // The four places a label can go, each with its own cost: covering other icons, leaving the map,
-  // and a small preference for right, then left, below and above.
-  const choices = points.map((p, i) => {
-    const cy = p.y - GAUGE_H / 2;  // middle of the icon, where labels are anchored
-    // Label size, and where Leaflet will put it (it adds 6 px beyond the offset).
-    // The tap cue sits at the end of the last line, so that line is CUE_W px wider.
-    const last = texts[i].length - 1;
-    const w = Math.max(...texts[i].map((t, k) => ctx.measureText(t).width + (k === last ? CUE_W : 0))) + 12, h = 17 * texts[i].length + 3;
-    return [
-      { dir: "right", offset: [8, 0], box: { x1: p.x + 14, y1: cy - h / 2, x2: p.x + 14 + w, y2: cy + h / 2 }, pref: 0 },
-      { dir: "left", offset: [-8, 0], box: { x1: p.x - 14 - w, y1: cy - h / 2, x2: p.x - 14, y2: cy + h / 2 }, pref: 1 },
-      { dir: "bottom", offset: [0, 16], box: { x1: p.x - w / 2, y1: p.y + 8, x2: p.x + w / 2, y2: p.y + 8 + h }, pref: 2 },
-      { dir: "top", offset: [0, -12], box: { x1: p.x - w / 2, y1: p.y - 32 - h, x2: p.x + w / 2, y2: p.y - 32 }, pref: 3 },
-    ].map(o => {
-      const b = o.box;
-      let cost = o.pref;
-      icons.forEach((d, j) => { if (j !== i) cost += overlap(b, d) * 3; });
-      const e = LABEL_MARGIN;  // labels keep this far from the map's edges
-      cost += (Math.max(0, e - b.x1) + Math.max(0, b.x2 - (size.x - e))) * h * 3 + (Math.max(0, e - b.y1) + Math.max(0, b.y2 - (size.y - e))) * w * 3;
-      return { ...o, cost };
-    });
-  });
-
-  // Try the combinations and keep the one with the lowest total cost (labels covering each other count too).
-  // Searching is quick for a handful of gauges; cheaper partial results are explored first and worse ones cut short.
-  const n = points.length, pick = new Array(n), best = { cost: Infinity, pick: null };
-  let steps = 0;
-  (function search(i, cost) {
-    if (cost >= best.cost || ++steps > 200000) return;
-    if (i === n) { best.cost = cost; best.pick = pick.slice(); return; }
-    const options = choices[i].map((o, k) => {
-      let c = o.cost;
-      for (let j = 0; j < i; j++) c += overlap(o.box, choices[j][pick[j]].box) * 2;
-      return { k, c };
-    }).sort((a, b) => a.c - b.c);
-    for (const { k, c } of options) { pick[i] = k; search(i + 1, cost + c); }
-  })(0, 0);
-
-  // With many gauges the search above can stop early, so then try moving one label at a time to another side.
-  const chosen = best.pick ? best.pick.slice() : new Array(n).fill(0);
-  const total = () => {
-    let c = 0;
-    for (let i = 0; i < n; i++) {
-      c += choices[i][chosen[i]].cost;
-      for (let j = 0; j < i; j++) c += overlap(choices[i][chosen[i]].box, choices[j][chosen[j]].box) * 2;
-    }
-    return c;
-  };
-  let cost = total();
-  for (let pass = 0; pass < 10; pass++) {
-    let better = false;
-    for (let i = 0; i < n; i++) {
-      const was = chosen[i];
-      for (let k = 0; k < 4; k++) {
-        if (k === chosen[i]) continue;
-        const keep = chosen[i];
-        chosen[i] = k;
-        const c = total();
-        if (c < cost - 1e-9) { cost = c; better = true; } else chosen[i] = keep;
-      }
-      if (chosen[i] !== was) better = true;
-    }
-    if (!better) break;
-  }
-
-  // If labels still cover each other or other icons (a crowded map on a narrow screen), hide the later
-  // ones in gauges.csv order. Their names show on hover, and tapping the icon opens the gauge's card.
-  const shown = [];
-  const drawn = points.map(p => ({ x1: p.x - GAUGE_W / 2, y1: p.y - GAUGE_H, x2: p.x + GAUGE_W / 2, y2: p.y }));  // icons without the margin
-  const inMap = b => b.x1 >= LABEL_MARGIN && b.y1 >= LABEL_MARGIN && b.x2 <= size.x - LABEL_MARGIN && b.y2 <= size.y - LABEL_MARGIN;
-  const isClear = (i, box) => drawn.every((d, j) => j === i || overlap(box, d) === 0) && shown.every(o => overlap(box, o) === 0);
-  const visible = chosen.map((k, i) => {
-    // The chosen side if it's clear, otherwise the cheapest other side that is clear and inside the map.
-    const order = [k, ...[0, 1, 2, 3].filter(x => x !== k).sort((a, b) => choices[i][a].cost - choices[i][b].cost)];
-    const ok = order.find((x, n) => isClear(i, choices[i][x].box) && (n === 0 || inMap(choices[i][x].box)));
-    if (ok === undefined) return false;
-    chosen[i] = ok;
-    shown.push(choices[i][ok].box);
-    return true;
-  });
-
-  state.markers.forEach((m, i) => {
-    const o = choices[i][chosen[i]];
-    m.unbindTooltip();
-    if (!visible[i]) {
-      m.bindTooltip(m.gauge.label.replace(/&/g, "&amp;").replace(/</g, "&lt;"), { direction: o.dir, offset: o.offset, className: "gauge-label" });
-      return;
-    }
-    const html = texts[i].map(t => t.replace(/&/g, "&amp;").replace(/</g, "&lt;")).join("<br>") +
-      '<span class="tap-cue" aria-hidden="true">i</span>';
-    m.bindTooltip(html, { permanent: true, interactive: true, direction: o.dir, offset: o.offset, className: "gauge-label" });
-    m.getTooltip().on("click", () => m.openPopup());  // tapping the label opens the same card as the icon
-  });
-  // Without overlaps the total is only the small side preferences (at most 3 per label), and no label is hidden.
-  return cost <= 3 * n && visible.every(Boolean);
-}
-
-function popupContent(g) {
-  const div = el("div", null, "pop");
-  div.appendChild(el("h4", g.name));
-  if (!g.ok) {
-    div.appendChild(el("p", "Data for this gauge couldn't be loaded."));
-    return div;
-  }
-  const p = seasonProgress(g);
-  const dl = document.createElement("dl");
-  const rows = [["Season to date", `${fmtIn(p.season)} in`]];
-  if (state.stats) rows.push(["% of normal", p.limited ? "limited history" : fmtPct(p.pctNormal)]);
-  for (const [label, value] of rows) dl.append(el("dt", label), el("dd", value));
-  div.appendChild(dl);
-  const link = el("a", "View details");
-  link.href = "#gauge";
-  link.addEventListener("click", e => {
-    e.preventDefault();
-    selectGauge(g.id);
-    if (state.map) state.map.closePopup();
-    document.getElementById("gauge").scrollIntoView({ behavior: "smooth", block: "start" });
-  });
-  div.appendChild(link);
-  return div;
 }
 
 // ---------- hourly and season-total charts ----------
@@ -2618,11 +2296,6 @@ async function main() {
     document.getElementById("trail-map").innerHTML = '<p class="message" style="padding:24px">Sorry, the trail map couldn\'t be drawn. The trail ratings below still work.</p>';
   });
   setupControls();
-  try { renderMap(); } catch (e) {
-    console.error(e);
-    document.getElementById("map").innerHTML =
-      '<p class="message" style="padding:24px">Sorry, the map couldn\'t be loaded. The charts below still work.</p>';
-  }
   renderProgress();
   if (!chartsAvailable()) return;
   try {

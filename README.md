@@ -6,13 +6,11 @@ Santa Clara Valley Water District's ALERT rain gauges, using the district's
 
 **Dashboard:** https://fdesilvaleon.github.io/rainfall-dashboard/
 
-The dashboard (`index.html`) shows a map of the gauge locations, how each
-gauge's season compares with normal and with last year (a table for all gauges,
-and numbers and a water-year chart for a chosen gauge), hourly rain, and recent
-totals. The map uses standard OpenStreetMap tiles (tile.openstreetmap.org),
-shown in gray at low contrast. Where the map is too crowded for every name
-label (especially on phones), some labels are hidden; their names show on hover
-and when zooming in, and tapping any gauge opens its card. It is hosted free on GitHub Pages and reads the data files in this
+The dashboard (`index.html`) shows a trail conditions map and ratings for each
+trail region, how each gauge's season compares with normal and with last year
+(a chart for all gauges, and numbers and a water-year chart for a chosen gauge),
+hourly rain, and recent totals. The map uses standard OpenStreetMap tiles
+(tile.openstreetmap.org), shown in gray at low contrast. It is hosted free on GitHub Pages and reads the data files in this
 repository (`data/<id>.csv`, `data/history/` and `data/stats.json`), so it
 updates whenever new data is collected.
 
@@ -24,7 +22,7 @@ updates whenever new data is collected.
 
 - **`gauges.csv`** is the list of rain gauges. To add a gauge, add a line with
   its ID number, name, latitude, longitude and (optionally) a short `label`
-  for the map. IDs and coordinates are in the
+  (used in chart labels). IDs and coordinates are in the
   district's sensor list at https://alertdata.valleywater.org/Sensor/all (look
   up the gauge's `gageId` and copy its `latitude` and `longitude`). Then run
   `python backfill.py <id>` once to download its history.
