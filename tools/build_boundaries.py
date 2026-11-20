@@ -50,6 +50,8 @@ CENSUS_YEAR = 2025
 CENSUS_ZIP = f"https://www2.census.gov/geo/tiger/GENZ{CENSUS_YEAR}/shp/cb_{CENSUS_YEAR}_06_place_500k.zip"
 AREA = (37.05, -122.45, 37.55, -121.60)  # south, west, north, east: where to look for parks
 I280_AREA = (37.15, -122.35, 37.55, -121.85)  # where to fetch Interstate 280
+BAY_SIDE = (-122.0819, 37.3894)               # Mountain View city hall: east of I-280
+HILL_SIDE = (-122.1700, 37.3200)              # Monte Bello preserve: west of I-280
 MIN_PIECE_KM2 = 0.05                          # trimmed city pieces smaller than this (5 ha) are dropped as slivers
 SIMPLIFY_M = 20                          # simplification tolerance in metres
 DECIMALS = 5                             # about 1 m
@@ -244,25 +246,26 @@ def census_city_limits(cfg, cache):
 
 
 def east_of_280(cache):
-    """The area east of Interstate 280 (the bay side), from the motorway's two carriageways in OpenStreetMap.
-    Each carriageway is closed into an area with lines out to the east; a place must be east of both."""
+    """The area east of Interstate 280 (the bay side). The motorway's carriageways from OpenStreetMap become a
+    100 m-wide strip, extended to the edges of the search area at its north and east ends; the area minus that strip
+    falls into pieces, and the east side is the piece that holds a point on the bay side."""
     s, w, n, e = I280_AREA
     q = f'[out:json][timeout:120];way["highway"="motorway"]["ref"~"(^|;)I 280($|;)"]({s},{w},{n},{e});out geom;'
     els = overpass(q, cache, "overpass_i280.json")["elements"]
     lines = [LineString([(p["lon"], p["lat"]) for p in el["geometry"]]) for el in els if len(el.get("geometry", [])) > 1]
-    merged = linemerge(lines)
-    parts = sorted(getattr(merged, "geoms", [merged]), key=lambda g: g.length, reverse=True)[:2]
-    areas = []
-    for line in parts:
-        pts = list(line.coords)
-        if pts[0][1] < pts[-1][1]:
-            pts.reverse()  # start at the north end
-        (x0, y0), (x1, y1) = pts[0], pts[-1]
-        far_east, far_north = -121.0, 38.0
-        areas.append(Polygon(pts + [(far_east, y1), (far_east, far_north), (x0, far_north)]).buffer(0))
-    east = areas[0].intersection(areas[1]) if len(areas) == 2 else areas[0]
-    lats = [y for line in parts for _, y in line.coords]
-    return east, f"{len(els)} I-280 motorway ways, {len(parts)} carriageways, latitude {min(lats):.3f} to {max(lats):.3f}"
+    road = unary_union(lines)
+    # Carry the line on to the edges: north from its northern end, east from its eastern end (I-280 ends at US-101).
+    north = max((pt for line in lines for pt in line.coords), key=lambda pt: pt[1])
+    east_end = max((pt for line in lines for pt in line.coords), key=lambda pt: pt[0])
+    road = unary_union([road, LineString([north, (north[0], n + 0.1)]), LineString([east_end, (e + 0.1, east_end[1])])])
+    box = Polygon([(w, s), (e, s), (e, n), (w, n)])
+    strip = transform(TO_DEG, transform(TO_M, road).buffer(50))
+    sides = getattr(box.difference(strip), "geoms", [box.difference(strip)])
+    east = next((p for p in sides if p.contains(Point(BAY_SIDE))), None)
+    if east is None or east.contains(Point(HILL_SIDE)):
+        raise RuntimeError("couldn't separate the two sides of I-280 (the motorway line has a gap?)")
+    lats = [y for line in lines for _, y in line.coords]
+    return east, f"{len(els)} I-280 motorway ways, latitude {min(lats):.3f} to {max(lats):.3f}; area split into {len(sides)} pieces"
 
 
 def build_cities(cfg, cache, report, park_geoms=None, trim=True):

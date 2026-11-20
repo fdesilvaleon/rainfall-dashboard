@@ -26,7 +26,7 @@
   {"name": "Russian Ridge Open Space Preserve", "region": "skyline", "match": ["Russian Ridge Open Space Preserve", "Russian Ridge Preserve"], "also": ["Russian Ridge Open Space Preserve (closed area)"]},
   {"name": "Skyline Ridge Open Space Preserve", "region": "skyline", "match": ["Skyline Ridge Open Space Preserve", "Skyline Ridge Preserve"], "also": ["Skyline Ridge Open Space Preserve (closed area)"]},
   {"name": "Long Ridge Open Space Preserve", "region": "skyline", "match": ["Long Ridge Open Space Preserve", "Long Ridge Preserve"], "also": ["Long Ridge Open Space Preserve (closed areas)"]},
-  {"name": "Monte Bello Open Space Preserve", "region": "skyline", "match": ["Monte Bello Open Space Preserve", "Monte Bello Preserve"]},
+  {"name": "Monte Bello Open Space Preserve", "region": "skyline", "match": ["Monte Bello Open Space Preserve", "Monte Bello Preserve"], "also": ["relation/6197086"]},
   {"name": "Los Trancos Open Space Preserve", "region": "skyline", "match": ["Los Trancos Open Space Preserve", "Los Trancos Preserve"]},
   {"name": "Almaden Quicksilver County Park", "region": "south", "match": ["Almaden Quicksilver County Park", "Almaden Quicksilver"]},
   {"name": "Calero County Park", "region": "south", "match": ["Calero County Park", "Calero Park"]},
