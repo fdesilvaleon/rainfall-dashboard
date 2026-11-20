@@ -261,14 +261,35 @@ CUT_LINES = {
         "drop": (-122.1700, 37.3200),  # Monte Bello preserve
     },
     "Foothill Boulevard": {
-        # The Foothill corridor: Foothill Boulevard (or Blvd) and its continuation north of I-280, Foothill Expressway.
-        "filter": 'way["highway"]["name"~"Foothill (Boulevard|Blvd|Expressway)",i]',
+        # From the US Census TIGER/Line roads for Santa Clara County (public domain): Foothill Boulevard in Cupertino
+        # is "N Foothill Blvd" (I-280 to Stevens Creek Blvd) and "S Foothill Blvd" (on to Stevens Canyon Road).
+        "tiger": ["N Foothill Blvd", "S Foothill Blvd"],
         "area": (37.26, -122.15, 37.37, -121.95),
         "extend": ("north", "south"),  # carried straight north and south from its ends
         "keep": (-122.0293, 37.3197),  # Cupertino city hall
         "drop": (-122.0900, 37.3150),  # hills west of Cupertino
     },
 }
+
+
+TIGER_ROADS = f"https://www2.census.gov/geo/tiger/TIGER{CENSUS_YEAR}/ROADS/tl_{CENSUS_YEAR}_06085_roads.zip"  # Santa Clara County
+
+
+def tiger_roads(names, cache, area):
+    """Lines of the named roads (FULLNAME) inside area, from the Census TIGER/Line roads file. Returns (lines, labels)."""
+    z = zipfile.ZipFile(io.BytesIO(download(TIGER_ROADS, cache, Path(TIGER_ROADS).name)))
+    base = next(x for x in z.namelist() if x.endswith(".shp"))[:-4]
+    reader = shapefile.Reader(shp=io.BytesIO(z.read(base + ".shp")), dbf=io.BytesIO(z.read(base + ".dbf")),
+                              shx=io.BytesIO(z.read(base + ".shx")))
+    box = Polygon([(area[1], area[0]), (area[3], area[0]), (area[3], area[2]), (area[1], area[2])])
+    lines, labels = [], set()
+    for rec, shp in zip(reader.records(), reader.shapes()):
+        if rec["FULLNAME"] in names and len(shp.points) > 1:
+            line = LineString(shp.points)
+            if line.intersects(box):
+                lines.append(line)
+                labels.add(f"{rec['FULLNAME']} ({base})")
+    return lines, sorted(labels)
 
 
 NOT_ROADS = {"footway", "cycleway", "path", "pedestrian", "steps", "track", "service", "bridleway", "construction", "proposed"}
@@ -280,10 +301,17 @@ def east_of(line_id, cache):
     holds the line's "keep" point (and must not hold its "drop" point)."""
     cfg = CUT_LINES[line_id]
     s, w, n, e = cfg["area"]
-    q = f'[out:json][timeout:120];{cfg["filter"]}({s},{w},{n},{e});out geom;'
-    name = "overpass_" + re.sub(r"\W+", "_", line_id.lower()).strip("_") + ".json"
-    els = [el for el in overpass(q, cache, name)["elements"] if el.get("tags", {}).get("highway") not in NOT_ROADS]
-    lines = [LineString([(p["lon"], p["lat"]) for p in el["geometry"]]) for el in els if len(el.get("geometry", [])) > 1]
+    if cfg.get("tiger"):
+        lines, kinds = tiger_roads(cfg["tiger"], cache, cfg["area"])
+        els = lines
+        source = "US Census TIGER/Line roads"
+    else:
+        q = f'[out:json][timeout:120];{cfg["filter"]}({s},{w},{n},{e});out geom;'
+        name = "overpass_" + re.sub(r"\W+", "_", line_id.lower()).strip("_") + ".json"
+        els = [el for el in overpass(q, cache, name)["elements"] if el.get("tags", {}).get("highway") not in NOT_ROADS]
+        lines = [LineString([(p["lon"], p["lat"]) for p in el["geometry"]]) for el in els if len(el.get("geometry", [])) > 1]
+        kinds = sorted({f"{el['tags'].get('name')} ({el['tags'].get('highway')})" for el in els})
+        source = "OpenStreetMap ways"
     if not lines:
         # Say what is there, to fix the filter.
         q2 = f'[out:json][timeout:60];way["highway"]["name"~"Foothill|Stevens Canyon",i]({s},{w},{n},{e});out tags center;'
@@ -306,8 +334,7 @@ def east_of(line_id, cache):
         raise RuntimeError(f"couldn't separate the two sides of {line_id} (the road line has a gap?)")
     lats = [y for _, y in pts]
     ext = ", ".join(f"{d} from {ends[d][1]:.4f},{ends[d][0]:.4f}" for d in cfg["extend"])
-    kinds = sorted({f"{el['tags'].get('name')} ({el['tags'].get('highway')})" for el in els})
-    return east, f"{line_id}: {len(els)} OpenStreetMap ways [{'; '.join(kinds)[:300]}], latitude {min(lats):.3f} to {max(lats):.3f}; carried on {ext}"
+    return east, f"{line_id}: {len(els)} {source} [{'; '.join(kinds)[:300]}], latitude {min(lats):.3f} to {max(lats):.3f}; carried on {ext}"
 
 
 def build_cities(cfg, cache, report, park_geoms=None, trim=True):

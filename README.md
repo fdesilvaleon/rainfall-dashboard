@@ -402,7 +402,7 @@ published here.
 
 **Sources, licenses and the attribution to show:**
 
-- **Parks, the dividing roads (I-280, Foothill Boulevard) and the park cut-outs in the city areas: OpenStreetMap**,
+- **Parks, the I-280 line and the park cut-outs in the city areas: OpenStreetMap**,
   through the Overpass API. License:
   [Open Database License (ODbL) 1.0](https://opendatacommons.org/licenses/odbl/1-0/).
   Show: **"© OpenStreetMap contributors"**, linked to
@@ -414,6 +414,10 @@ published here.
   California places (`cb_2025_06_place_500k`, www2.census.gov). Public domain (a
   work of the US government); no attribution is required. Suggested credit:
   "City limits: U.S. Census Bureau, 2025 Cartographic Boundary Files."
+- **Foothill Boulevard line (Cupertino's cut): US Census Bureau**, 2025 TIGER/Line
+  roads for Santa Clara County (`tl_2025_06085_roads`, "N Foothill Blvd" and
+  "S Foothill Blvd"). Public domain, like the city limits. (Overpass kept timing
+  out on this road, and the Census file can be downloaded from anywhere.)
 
 **Rebuilding** (by hand, never in the hourly workflow):
 
@@ -422,9 +426,10 @@ published here.
     python tools/build_boundaries.py --untrimmed  # full city limits instead of the trimmed ones
     python -m unittest test_boundaries
 
-The script makes one Overpass request for the parks and one for each dividing road (trying two
-other public Overpass servers if the main one fails), and downloads one Census
-file (`--cache-dir DIR` keeps the downloads and reuses them). Parks are found by
+The script makes one Overpass request for the parks and one for I-280 (trying two
+other public Overpass servers if the main one fails), and downloads two Census
+files (city limits, and the county's roads for Foothill Boulevard; `--cache-dir DIR` keeps the downloads and reuses them).
+If the park download fails, the cities are trimmed with the park outlines already saved. Parks are found by
 the names under `"match"` in `data/regions.json`; to fix a wrong match, add
 `"osm": "relation/123"` (or `way/123`) to that park's line, and list extra pieces
 under `"also"`.
