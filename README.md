@@ -364,6 +364,20 @@ isn't there yet, the comfort check is skipped. **All the numbers live in one
 commented block, `TRAIL`, near the top of the trail-conditions part of the
 script in `index.html`**, so they can be tuned in one place.
 
+## Trail conditions map (on the dashboard)
+
+A map above the Trail conditions section shows today's rating for each trail
+region (Peninsula foothills, Skyline ridge, South Valley, Valley floor), drawn
+with the real park and city shapes from `data/parks.geojson` and
+`data/cities.geojson` (see "Boundary data" below). Each region is rated with its
+own gauges (`TRAIL.REGIONS` in `index.html`), the same way as the "Region ratings
+(preview)" section; the Valley floor is paved, so it is rated on the weather in
+each block only. A Running / Biking switch recolors the map, and hovering over
+or tapping a region (or Tab, then Enter) opens a card with its parks or cities,
+the rating and its reason, the three time blocks, ground wetness and the number
+of gauges. The two shape files add about 51 KB (about 13 KB compressed); if they
+can't be loaded, a short message replaces the map and the rest of the page works.
+
 ## Boundary data
 
 Park outlines and city areas for the planned trail-region map. These are static
