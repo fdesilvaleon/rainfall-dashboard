@@ -261,7 +261,8 @@ CUT_LINES = {
         "drop": (-122.1700, 37.3200),  # Monte Bello preserve
     },
     "Foothill Boulevard": {
-        "filter": 'way["highway"]["name"~"Foothill Bl",i]',  # any road named Foothill Boulevard/Blvd (paths dropped below)
+        # The Foothill corridor: Foothill Boulevard (or Blvd) and its continuation north of I-280, Foothill Expressway.
+        "filter": 'way["highway"]["name"~"Foothill (Boulevard|Blvd|Expressway)",i]',
         "area": (37.26, -122.15, 37.37, -121.95),
         "extend": ("north", "south"),  # carried straight north and south from its ends
         "keep": (-122.0293, 37.3197),  # Cupertino city hall
