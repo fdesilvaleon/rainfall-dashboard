@@ -326,10 +326,16 @@ carries on.
 
 ## Trail conditions (on the dashboard)
 
-A rough running and biking guide from the **average of the 7 original gauges**
-(Mountain View, Rancho San Antonio, Stevens Creek Reservoir, Sunnyvale Hamilton,
-Palo Alto, Maryknoll Fields, Trappers Trail; the list is `GAUGES` in the `TRAIL`
-block), for today
+A rough running and biking guide for **one trail region at a time**, from the
+average of that region's gauges (`TRAIL.REGIONS` in the `TRAIL` block). The
+region is picked on the trail conditions map (click or tap a region, or Tab to it
+and press Enter) or with the Region dropdown next to the heading; the default is
+Peninsula foothills (Rancho San Antonio, Stevens Creek Reservoir, Trappers Trail,
+Westwind), and the choice is remembered in the browser. (Before this, the tiles
+averaged 7 gauges, `TRAIL.GAUGES`: Mountain View, Rancho San Antonio, Stevens
+Creek Reservoir, Sunnyvale Hamilton, Palo Alto, Maryknoll Fields and Trappers
+Trail.) The Valley floor is paved, so it is rated on the weather in each block and
+recent rain instead of ground wetness (see the map section below). The tiles cover today
 (two cards) and the next 2 days (a table), in three time blocks: morning 4-10 AM,
 mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Each block gets the
 **worse** of three checks:
@@ -370,8 +376,8 @@ A map above the Trail conditions section shows today's rating for each trail
 region (Peninsula foothills, Skyline ridge, South Valley, Valley floor), drawn
 with the real park and city shapes from `data/parks.geojson` and
 `data/cities.geojson` (see "Boundary data" below). Each region is rated with its
-own gauges (`TRAIL.REGIONS` in `index.html`), the same way as the "Region ratings
-(preview)" section; the Valley floor is paved, so it is rated on the weather in
+own gauges (`TRAIL.REGIONS` in `index.html`), the same way as the Trail conditions
+tiles show it when that region is selected; the Valley floor is paved, so it is rated on the weather in
 each block (forecast rain and feels-like) instead of ground wetness, plus road
 wetness, from the rain before each block (measured, then forecast, averaged over
 the Valley floor gauges): 0.02 in or more in the 12 hours before, the block is at
@@ -379,7 +385,9 @@ best Fair; 0.15 in or more in the 6 hours before, Poor (`TRAIL.ROAD_WET` in
 `index.html`). A Running / Biking switch recolors the map, and hovering over
 or tapping a region (or Tab, then Enter) opens a card with its parks or cities,
 the rating and its reason, the three time blocks, ground wetness and the number
-of gauges. The two shape files add about 51 KB (about 13 KB compressed); if they
+of gauges. Clicking or tapping a region (or its label) also selects it for the
+Trail conditions tiles; the selected region has a thick dark outline and
+"selected" in its label. The two shape files add about 51 KB (about 13 KB compressed); if they
 can't be loaded, a short message replaces the map and the rest of the page works.
 
 ## Boundary data

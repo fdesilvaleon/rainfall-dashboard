@@ -134,17 +134,11 @@
   .trail-table td.day small { display: block; color: var(--text-2); }
   .cell { border-radius: 6px; padding: 5px 4px; text-align: center; font-weight: 600; font-size: 0.8rem; }
   .trail-mobile { display: none; }
-  /* Region ratings (preview) */
-  .region-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
-  .region-row { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
-  .region-row h3 { margin: 0 0 6px; font-size: 1rem; }
-  .region-row .grid { display: grid; grid-template-columns: 64px repeat(3, 1fr); gap: 4px; align-items: center; }
-  .region-row .grid .head { text-align: center; color: var(--text-2); font-size: 0.78rem; font-weight: 600; }
-  .region-row .grid .sport { font-size: 0.8rem; color: var(--text-2); }
-  .region-row .cell.past { background: var(--tile-bg); color: var(--muted); font-weight: 400; }
-  .region-row .facts { margin: 8px 0 0; font-size: 0.82rem; color: var(--text-2); }
-  .region-row .facts b { color: var(--text); font-weight: 600; }
-  .region-row .nodata { color: var(--muted); }
+  /* Trail conditions heading: region name and picker */
+  .trail-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+  .trail-head h2 { margin: 0; }
+  .region-pick { font-size: 0.95rem; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; }
+  .region-pick select { min-height: 40px; }
   .trail-mobile .labels, .trail-mobile .row { display: grid; grid-template-columns: 64px repeat(3, 1fr); gap: 4px; align-items: center; margin-top: 4px; }
   .trail-mobile .labels span { text-align: center; color: var(--text-2); font-size: 0.78rem; font-weight: 600; }
   .trail-mobile .daytitle { margin: 10px 0 2px; font-weight: 600; font-size: 0.9rem; }
@@ -224,6 +218,8 @@
   #trail-map path.leaflet-interactive:focus { outline: none; }
   #trail-map path.leaflet-interactive:focus-visible { stroke-width: 4px; }
   .leaflet-marker-icon.tmap-label { background: none; border: 0; }
+  .tmap-label.selected span { outline: 2px solid #1d1d1b; font-weight: 700; }
+  .leaflet-marker-icon.tmap-label { cursor: pointer; }
   .tmap-label span {
     display: inline-block; transform: translate(-50%, -50%); white-space: nowrap;
     background: rgba(255, 255, 255, 0.92); color: #1d1d1b; border-radius: 4px; padding: 2px 6px;
@@ -360,17 +356,16 @@
   </section>
 
   <section class="card" id="trail">
-    <h2>Trail conditions</h2>
-    <p class="sub">Running and biking, from the last 3 days of rain and the next few days of forecast.</p>
+    <div class="trail-head">
+      <h2>Trail conditions<span id="trail-region-name"></span></h2>
+      <label class="region-pick">Region:
+        <select id="trail-region"></select>
+      </label>
+    </div>
+    <p class="sub">Running and biking, from the last 3 days of rain and the next few days of forecast. Pick a region here or on the map above.</p>
     <div id="trail-today" class="trail-today"></div>
     <div id="trail-next" class="trail-card trail-next"></div>
     <div id="trail-notes" class="footnote"></div>
-  </section>
-
-  <section class="card" id="regions">
-    <h2>Region ratings (preview)</h2>
-    <p class="sub">A preview of trail ratings for each region, from that region's own gauges. It will be replaced by the map.</p>
-    <div id="region-rows" class="region-rows"></div>
   </section>
 
   <section class="card">
@@ -2201,9 +2196,9 @@ function renderTrail(regionId) {
     next.append(table, mobile);
   }
 
-  // One line per adjusted sport (multiplier above 1).
+  // One line per adjusted sport (multiplier above 1). Not for paved regions, which don't use ground wetness.
   for (const [sport, sportName] of SPORTS) {
-    if (mult[sport] > 1) {
+    if (mult[sport] > 1 && region.useWetness) {
       // About 0.9 in; 2 decimals when rounding to 1 would reach the next step (1.99 shouldn't read as 2.0).
       const step = TRAIL.SEASON_ADJUST.find(x => season.total < x.BELOW);
       const about = Number(season.total.toFixed(1)) >= step.BELOW ? season.total.toFixed(2) : season.total.toFixed(1);
@@ -2213,12 +2208,54 @@ function renderTrail(regionId) {
   }
   if (!useForecast) note("The forecast isn't available right now, so ratings use the ground wetness measured so far only.");
   else if (!anyFeels) note("Temperature isn't available yet, so ratings use ground wetness and rain only.");
-  note(regionId == null
-    ? `Estimate from the average of ${TRAIL.GAUGES.length} gauges near Mountain View (${trailNames()}). Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.`
-    : `Estimate for ${region.name} from the average of its gauges (${trailNames(regionId)}). Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.`);
+  if (regionId == null) {
+    note(`Estimate from the average of ${TRAIL.GAUGES.length} gauges near Mountain View (${trailNames()}). Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.`);
+  } else if (!region.useWetness) {
+    note(`${region.name} is pavement, so it is rated on the weather in each block and recent rain, not ground wetness` +
+         (region.roadWet ? ` (${roadWetText()})` : "") + `. Estimate from the average of its gauges (${trailNames(regionId)}).`);
+  } else {
+    note(`Estimate for ${region.name} from the average of its gauges (${trailNames(regionId)}). Trail conditions vary by soil and trail, and parks may close trails after rain; check the park's own status.`);
+  }
 }
 
-// ---------- region ratings (preview) ----------
+// ---------- selected region (Trail conditions) ----------
+
+const DEFAULT_REGION = "foothills";
+const REGION_KEY = "trailRegion";  // localStorage: the viewer's chosen region
+
+// The saved region if it is one of TRAIL.REGIONS, otherwise the default. Storage may be blocked or hold anything.
+function savedRegion() {
+  try {
+    const v = localStorage.getItem(REGION_KEY);
+    if (typeof v === "string" && TRAIL.REGIONS.some(r => r.id === v)) return v;
+  } catch (e) { /* storage blocked: use the default */ }
+  return DEFAULT_REGION;
+}
+
+// Show a region in the Trail conditions section, and mark it on the map and in the dropdown.
+function selectRegion(regionId, save = true) {
+  if (!TRAIL.REGIONS.some(r => r.id === regionId)) regionId = DEFAULT_REGION;
+  state.trailRegion = regionId;
+  if (save) { try { localStorage.setItem(REGION_KEY, regionId); } catch (e) { /* storage blocked: not remembered */ } }
+  document.getElementById("trail-region-name").textContent = ` · ${trailRegion(regionId).name}`;
+  const select = document.getElementById("trail-region");
+  if (select.value !== regionId) select.value = regionId;
+  try { renderTrail(regionId); } catch (e) { console.error(e); }
+  if (tmap.map) restyleTrailMap();
+}
+
+function setupRegionPicker() {
+  const select = document.getElementById("trail-region");
+  for (const r of TRAIL.REGIONS) {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = r.name;
+    select.appendChild(opt);
+  }
+  select.addEventListener("change", () => selectRegion(select.value));
+}
+
+// ---------- region ratings ----------
 
 // One region's ratings for today: per sport, the three blocks (rated like the Trail conditions tiles, with the
 // region's gauges), and the ground wetness measured so far. noData: none of the region's gauges has data.
@@ -2240,50 +2277,16 @@ function regionToday(regionId) {
            gaugesWithData: gauges.map(g => g.id), useForecast };
 }
 
-// The road-wetness rule in plain words, for the preview and the map card.
+// The road-wetness rule in plain words, for the map card and the Valley floor note.
 function roadWetText() {
   const rw = TRAIL.ROAD_WET;
   return `roads count as wet (Fair at best) for ${rw.FAIR_HOURS} hours after rain, and very wet (Poor) for ${rw.POOR_HOURS} hours after ${rw.POOR_AT.toFixed(2)} in or more`;
 }
 
-function renderRegionPreview() {
-  const box = document.getElementById("region-rows");
-  box.textContent = "";
-  state.regions = {};  // kept for checking by hand
-  const label = id => (state.gauges.find(g => g.id === id) || { label: id }).label;
-  for (const r of TRAIL.REGIONS) {
-    const t = regionToday(r.id);
-    state.regions[r.id] = t;
-    const row = el("div", null, "region-row");
-    row.appendChild(el("h3", r.name));
-    if (t.noData) {
-      row.appendChild(el("p", "No data: none of this region's gauges could be loaded.", "nodata"));
-    } else {
-      const grid = el("div", null, "grid");
-      grid.appendChild(el("span"));
-      TRAIL.BLOCKS.forEach(b => grid.appendChild(el("span", b.name, "head")));
-      for (const [sport, sportName] of SPORTS) {
-        grid.appendChild(el("span", sportName, "sport"));
-        for (const { b, r: rr } of t.sports[sport].rated) {
-          const c = b.past ? el("div", "Past", "cell past") : ratingBox(rr.rating, "cell");
-          if (!b.past) c.textContent = rr.rating == null ? "No rating" : TRAIL.RATINGS[rr.rating];
-          c.title = `${b.label}: ${inputsText(b.inputs)}`;
-          grid.appendChild(c);
-        }
-      }
-      row.appendChild(grid);
-      const facts = el("p", null, "facts");
-      facts.append("Ground wetness: ");
-      facts.appendChild(el("b", !r.useWetness ? "not used (pavement)" : t.wetness == null ? "no data" : `${t.wetness.toFixed(2)} in`));
-      if (!r.useWetness) facts.append(" · rated on the weather in each block" +
-        (r.roadWet ? "; " + roadWetText() : ""));
-      row.appendChild(facts);
-      const missing = r.gauges.filter(id => !t.gaugesWithData.includes(id));
-      row.appendChild(el("p", `Gauges: ${t.gaugesWithData.map(label).join(", ")}` +
-        (missing.length ? ` (no data: ${missing.map(label).join(", ")})` : ""), "facts"));
-    }
-    box.appendChild(row);
-  }
+// Today's ratings for every region (used by the map), kept in state.regions.
+function computeRegions() {
+  state.regions = {};
+  for (const r of TRAIL.REGIONS) state.regions[r.id] = regionToday(r.id);
 }
 
 // ---------- trail conditions map ----------
@@ -2291,7 +2294,7 @@ function renderRegionPreview() {
 const TMAP_SHORT = { foothills: "Foothills", skyline: "Skyline", south: "South Valley", valley: "Valley" };  // labels when space is tight
 const tmap = { sport: "running", map: null, layers: [], labels: [], features: [], open: null, pinned: false, lastFocus: null };
 
-// A region's "today" rating for one sport (as in the Region ratings preview): { rating 0-3 or null, word, today }.
+// A region's "today" rating for one sport (the same as the Trail conditions tiles for that region): { rating 0-3 or null, word, today }.
 function regionRating(regionId, sport) {
   const today = (state.regions && state.regions[regionId]) || regionToday(regionId);
   if (today.noData) return { rating: null, word: "No data", today };
@@ -2302,6 +2305,9 @@ function regionRating(regionId, sport) {
 function tmapStyle(regionId, kind) {
   const { rating } = regionRating(regionId, tmap.sport);
   const color = rating == null ? css("--muted") : css(`--r${rating}-bg`);
+  if (regionId === state.trailRegion) {  // the selected region: thicker, dark outline
+    return { color: "#1d1d1b", weight: 3.5, opacity: 1, fillColor: color, fillOpacity: kind === "park" ? 0.6 : 0.4 };
+  }
   return { color, weight: kind === "park" ? 1.5 : 1.2, opacity: 0.95, fillColor: color, fillOpacity: kind === "park" ? 0.5 : 0.32 };
 }
 
@@ -2363,9 +2369,13 @@ function placeTrailMapLabels() {
   const placed = [];
   const fits = r => r.left >= box.left + 4 && r.right <= box.right - 4 && r.top >= box.top + 4 && r.bottom <= box.bottom - 4 &&
     placed.every(q => r.right + 4 <= q.left || q.right + 4 <= r.left || r.bottom + 2 <= q.top || q.bottom + 2 <= r.top);
-  for (const { region, marker, points } of tmap.labels) {
+  // The selected region's label is placed first, so it is never the one hidden.
+  const order = [...tmap.labels].sort((a, b) => (b.region.id === state.trailRegion) - (a.region.id === state.trailRegion));
+  for (const { region, marker, points } of order) {
     const span = marker.getElement().querySelector("span");
-    const word = regionRating(region.id, tmap.sport).word;
+    const selected = region.id === state.trailRegion;
+    marker.getElement().classList.toggle("selected", selected);
+    const word = regionRating(region.id, tmap.sport).word + (selected ? " · selected" : "");
     let shown = false;
     for (const text of [`${region.name} · ${word}`, `${TMAP_SHORT[region.id] || region.name} · ${word}`]) {
       span.textContent = text;
@@ -2435,9 +2445,17 @@ function closeTrailMapCard(returnFocus) {
 }
 
 function recolorTrailMap() {
-  for (const { layer, region, kind } of tmap.layers) layer.setStyle(tmapStyle(region, kind));
-  placeTrailMapLabels();
+  restyleTrailMap();
   if (tmap.open) showTrailMapCard(tmap.open, tmap.pinned);
+}
+
+// Colors and outlines (selected region on top), and the labels.
+function restyleTrailMap() {
+  for (const { layer, region, kind } of tmap.layers) {
+    layer.setStyle(tmapStyle(region, kind));
+    if (region === state.trailRegion) layer.bringToFront();
+  }
+  placeTrailMapLabels();
 }
 
 function renderTrailMapLegend() {
@@ -2485,7 +2503,7 @@ async function renderTrailMap() {
                                 style: () => tmapStyle(region, f.kind) }).getLayers()[0];
     layer.on("mouseover", () => { if (!tmap.pinned) showTrailMapCard(region, false); });
     layer.on("mouseout", () => { if (!tmap.pinned) closeTrailMapCard(false); });
-    layer.on("click", () => showTrailMapCard(region, true));
+    layer.on("click", () => { selectRegion(region); showTrailMapCard(region, true); });
     layer.addTo(map);
     tmap.layers.push({ layer, region, kind: f.kind, name: f.properties.name });
   }
@@ -2507,7 +2525,7 @@ async function renderTrailMap() {
     path.setAttribute("role", "button");
     path.setAttribute("aria-label", `${x.name}, ${region.name}`);
     path.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tmap.lastFocus = path; showTrailMapCard(x.region, true); }
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tmap.lastFocus = path; selectRegion(x.region); showTrailMapCard(x.region, true); }
     });
   }
   document.addEventListener("keydown", e => { if (e.key === "Escape") closeTrailMapCard(true); });
@@ -2517,10 +2535,11 @@ async function renderTrailMap() {
     const points = regionLabelPoints(region.id);
     if (!points.length) continue;
     const marker = L.marker(points[0], { icon: L.divIcon({ className: "tmap-label", html: "<span></span>", iconSize: [0, 0] }),
-                                         interactive: false, keyboard: false }).addTo(map);
+                                         keyboard: false }).addTo(map);
+    marker.on("click", () => { selectRegion(region.id); showTrailMapCard(region.id, true); });  // a label selects its region too
     tmap.labels.push({ region, marker, points });
   }
-  placeTrailMapLabels();
+  restyleTrailMap();
   requestAnimationFrame(() => requestAnimationFrame(placeTrailMapLabels));  // again once the page layout has settled
   map.on("zoomend moveend", placeTrailMapLabels);
   let lastSize = map.getSize();
@@ -2591,8 +2610,9 @@ async function main() {
     return;
   }
   renderHeader();
-  try { renderTrail(); } catch (e) { console.error(e); }
-  try { renderRegionPreview(); } catch (e) { console.error(e); }
+  try { computeRegions(); } catch (e) { console.error(e); }
+  setupRegionPicker();
+  selectRegion(savedRegion(), false);
   renderTrailMap().catch(e => {  // loads its shapes on its own; the rest of the page doesn't wait for it
     console.error(e);
     document.getElementById("trail-map").innerHTML = '<p class="message" style="padding:24px">Sorry, the trail map couldn\'t be drawn. The trail ratings below still work.</p>';
