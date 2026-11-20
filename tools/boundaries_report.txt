@@ -1,16 +1,33 @@
-overpass_parks.json: <urlopen error [Errno 101] Network is unreachable>; trying again in 60 seconds
-overpass_parks.json: https://overpass-api.de/api/interpreter failed (<urlopen error [Errno 101] Network is unreachable>)
-overpass_parks.json: The read operation timed out; trying again in 60 seconds
-overpass_parks.json: https://overpass.kumi.systems/api/interpreter failed (HTTP Error 504: Gateway Timeout)
-overpass_parks.json: The read operation timed out; trying again in 60 seconds
-overpass_parks.json: https://overpass.private.coffee/api/interpreter failed (HTTP Error 504: Gateway Timeout)
-parks: FAILED to download or build (no Overpass server answered (HTTP Error 504: Gateway Timeout)); parks.geojson left unchanged
-cities: FAILED to download or build (the parks are needed to trim the cities, and they weren't built); cities.geojson left unchanged
+overpass_parks.json: HTTP Error 502: Bad Gateway; trying again in 60 seconds
+Wrote data/parks.geojson: 17 features, 38 KB
+overpass_foothill_boulevard.json: HTTP Error 502: Bad Gateway; trying again in 60 seconds
+cities: FAILED to download or build (Foothill Boulevard: not found in OpenStreetMap); cities.geojson left unchanged
 
 name                                   region    matched as                                     km2 pieces  nearest gauge
+Pearson-Arastradero Preserve           foothills Enid Pearson-Arastradero Preserve             2.66      2  6147 Westwind Community Barn (1.5 km)
+Foothills Park                         foothills Foothills Nature Preserve                     5.47      1  6142 Trappers Trail (0.0 km, inside)
+Hidden Villa                           foothills Hidden Villa                                  6.28      1  6146 Los Trancos (0.8 km)
+Rancho San Antonio Open Space Preserve foothills Rancho San Antonio Open Space Preserve        8.68      1  6140 Rancho San Antonio (0.0 km)
+Rancho San Antonio County Park         foothills Rancho San Antonio County Park                1.17      3  6144 Maryknoll Fields (0.1 km)
+Stevens Creek County Park              foothills Stevens Creek County Park                     4.38      1  6100 Stevens Creek Reservoir (0.0 km, inside)
+Windy Hill Open Space Preserve         skyline   Windy Hill Open Space Preserve                5.53      2  6148 Windy Hill (0.0 km, inside)
+Wunderlich County Park                 skyline   Wunderlich County Park                        3.80      1  6149 Wunderlich (1.3 km)
+Huddart County Park                    skyline   Huddart County Park                           3.83      1  6150 Huddart Park (0.0 km, inside)
+Russian Ridge Open Space Preserve      skyline   Russian Ridge Open Space Preserve            14.01      2  6146 Los Trancos (1.3 km)
+Skyline Ridge Open Space Preserve      skyline   Skyline Ridge Open Space Preserve             8.20      1  6146 Los Trancos (1.4 km)
+Long Ridge Open Space Preserve         skyline   Long Ridge Open Space Preserve                8.68      5  6146 Los Trancos (3.7 km)
+Monte Bello Open Space Preserve        skyline   Monte Bello Open Space Preserve              13.53      2  6146 Los Trancos (0.0 km)
+Los Trancos Open Space Preserve        skyline   Los Trancos Open Space Preserve               1.10      2  6146 Los Trancos (0.0 km, inside)
+Almaden Quicksilver County Park        south     Almaden Quicksilver County Park              16.85      5  6004 Almaden Watershed (0.0 km)
+Calero County Park                     south     Calero County Park                           18.82      8  6128 Calero Watershed (0.0 km)
+Santa Teresa County Park               south     Santa Teresa County Park                      6.77      1  6128 Calero Watershed (4.1 km)
 
 Overlaps between regions (over 1% of the smaller shape), and parks of different regions within 100 m:
-  none
+  Foothills Park (foothills) / Los Trancos Open Space Preserve (skyline): 0 m apart
+  Hidden Villa (foothills) / Monte Bello Open Space Preserve (skyline): 0 m apart
+  Hidden Villa (foothills) / Los Trancos Open Space Preserve (skyline): 0 m apart
+  Rancho San Antonio Open Space Preserve (foothills) / Monte Bello Open Space Preserve (skyline): 0 m apart
+  Stevens Creek County Park (foothills) / Monte Bello Open Space Preserve (skyline): 0 m apart
 
 Outline problems:
   none
