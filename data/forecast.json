@@ -9,7 +9,7 @@
   "periods lists the forecast periods counted for each day, as NWS gave them (converted from mm to inches)."
  ],
  "time_zone": "America/Los_Angeles",
- "fetched_at": "2026-11-19T15:51:36-08:00",
+ "fetched_at": "2026-11-19T17:12:26-08:00",
  "gauges": {
   "6121": {
    "name": "Mountain View",
@@ -19,7 +19,7 @@
     "y": 86
    },
    "nws_updated": "2026-11-19T23:41:53+00:00",
-   "fetched_at": "2026-11-19T15:51:36-08:00",
+   "fetched_at": "2026-11-19T17:12:26-08:00",
    "days": [
     {
      "date": "2026-11-19",
@@ -256,7 +256,7 @@
     "y": 83
    },
    "nws_updated": "2026-11-19T23:41:53+00:00",
-   "fetched_at": "2026-11-19T15:51:36-08:00",
+   "fetched_at": "2026-11-19T17:12:26-08:00",
    "days": [
     {
      "date": "2026-11-19",
@@ -493,7 +493,7 @@
     "y": 81
    },
    "nws_updated": "2026-11-19T23:41:53+00:00",
-   "fetched_at": "2026-11-19T15:51:36-08:00",
+   "fetched_at": "2026-11-19T17:12:26-08:00",
    "days": [
     {
      "date": "2026-11-19",
@@ -730,7 +730,7 @@
     "y": 84
    },
    "nws_updated": "2026-11-19T23:41:53+00:00",
-   "fetched_at": "2026-11-19T15:51:36-08:00",
+   "fetched_at": "2026-11-19T17:12:26-08:00",
    "days": [
     {
      "date": "2026-11-19",
@@ -966,21 +966,21 @@
     "x": 93,
     "y": 89
    },
-   "nws_updated": "2026-11-19T21:41:26+00:00",
-   "fetched_at": "2026-11-19T15:51:36-08:00",
+   "nws_updated": "2026-11-19T23:41:53+00:00",
+   "fetched_at": "2026-11-19T17:12:26-08:00",
    "days": [
     {
      "date": "2026-11-19",
-     "rain_in": 0.17,
+     "rain_in": 0.09,
      "complete": false,
-     "hours_covered": 17.0,
-     "chance_max_pct": 78,
+     "hours_covered": 15.0,
+     "chance_max_pct": 60,
      "periods": [
       {
-       "start": "2026-11-19T07:00-08:00",
-       "hours": 3.0,
-       "rain_in": 0.12,
-       "apparent_temp_f": 51.7
+       "start": "2026-11-19T09:00-08:00",
+       "hours": 1.0,
+       "rain_in": 0.04,
+       "apparent_temp_f": 52.0
       },
       {
        "start": "2026-11-19T10:00-08:00",
@@ -1203,21 +1203,21 @@
     "x": 93,
     "y": 83
    },
-   "nws_updated": "2026-11-19T21:41:26+00:00",
-   "fetched_at": "2026-11-19T15:51:36-08:00",
+   "nws_updated": "2026-11-19T23:41:53+00:00",
+   "fetched_at": "2026-11-19T17:12:26-08:00",
    "days": [
     {
      "date": "2026-11-19",
-     "rain_in": 0.27,
+     "rain_in": 0.18,
      "complete": false,
-     "hours_covered": 17.0,
-     "chance_max_pct": 82,
+     "hours_covered": 15.0,
+     "chance_max_pct": 73,
      "periods": [
       {
-       "start": "2026-11-19T07:00-08:00",
-       "hours": 3.0,
-       "rain_in": 0.14,
-       "apparent_temp_f": 50.0
+       "start": "2026-11-19T09:00-08:00",
+       "hours": 1.0,
+       "rain_in": 0.05,
+       "apparent_temp_f": 51.0
       },
       {
        "start": "2026-11-19T10:00-08:00",
@@ -1441,7 +1441,7 @@
     "y": 85
    },
    "nws_updated": "2026-11-19T23:41:53+00:00",
-   "fetched_at": "2026-11-19T15:51:36-08:00",
+   "fetched_at": "2026-11-19T17:12:26-08:00",
    "days": [
     {
      "date": "2026-11-19",
@@ -1671,6 +1671,6 @@
    ]
   }
  },
- "checked_at": "2026-11-19T15:51:36-08:00",
+ "checked_at": "2026-11-19T17:12:26-08:00",
  "last_error": null
 }
