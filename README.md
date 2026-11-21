@@ -339,15 +339,19 @@ Creek Reservoir, Sunnyvale Hamilton, Palo Alto, Maryknoll Fields and Trappers
 Trail.) The Valley floor is paved, so it is rated on the weather in each block and
 recent rain instead of ground wetness (see the map section below). The tiles cover today
 (two cards) and the next 2 days (a table), in three time blocks: morning 4-10 AM,
-mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Each block gets the
-**worse** of three checks:
+mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Ratings, best to worst:
+Great, Good, Fair, Poor. Each block gets the **worse** of three checks:
 
 - **Ground wetness:** rain in the 24 hours before the block + 1/2 of the rain
   24-48 hours before + 1/4 of the rain 48-72 hours before. Measured hourly rain
   is used up to the latest measured hour, then the forecast (each 6-hour forecast
   period spread evenly). Only gauges with data for all 72 hours are averaged.
-  Running: under 0.1 in optimal, under 0.50 good, under 1.00 fair, otherwise
-  poor. Biking: under 0.02, 0.05 and 0.15.
+  Running: under 0.40 in great, under 1.50 good, under 3.00 fair, otherwise
+  poor. Biking: under 0.02, 0.05 and 0.15. The running limits (they were 0.10,
+  0.50 and 1.00) were set from two runs at Rancho San Antonio: Sun Nov 15, 2026
+  (wetness 0.24-0.39 in, felt very good) and Fri Nov 20, 2026 (1.36-1.95 in,
+  felt good to very good). They are a first pass: early-season soils drain faster
+  than saturated late-season soils, so recheck them later in the winter.
   **Season adjustment:** early in the water year the soil is dry and absorbs the
   first storms, so the same wetness gives less mud than in mid-winter. The limits
   are multiplied according to the season rain total, the average across those
@@ -357,12 +361,18 @@ mid day 10 AM-4 PM and afternoon 4-10 PM (Pacific time). Each block gets the
   every step for now. If the season total can't be determined, the multiplier is
   1.0. When a sport is adjusted, a line under the Trail conditions section says
   so. The steps are `SEASON_ADJUST` in the same `TRAIL` block.
-- **Rain during the block** (forecast): under 0.01 in optimal; 0.01-0.15 good for
+- **Rain during the block** (forecast): under 0.01 in great; 0.01-0.15 good for
     running, fair for biking; more than 0.15 poor.
 - **Comfort**, from the forecast feels-like temperature (`apparent_temp_f`): running
-  optimal 45-68°F, good 38-45/68-78, fair 30-38/78-88, poor outside; biking
-  optimal 50-72°F, good 42-50/72-82, fair 34-42/82-92, poor outside. At an exact
+  great 45-68°F, good 38-45/68-78, fair 30-38/78-88, poor outside; biking
+  great 50-72°F, good 42-50/72-82, fair 34-42/82-92, poor outside. At an exact
   boundary the better rating applies.
+
+Under each of today's two tiles, a thin bar from Great to Poor has a marker
+showing where within its rating the block sits (its label reads, for example,
+"Good, close to Great"); the math is `ratingPosition` in `index.html`. When the
+ground-wetness check alone is Good or worse, the Running tile adds a "watch for"
+line (`TRAIL.WATCH_FOR`); never for biking or the Valley floor.
 
 Values are compared as shown on the page (inches to 2 decimals, whole degrees).
 Today's big rating is the worst of the blocks still ahead; if all have ended,
@@ -382,8 +392,9 @@ own gauges (`TRAIL.REGIONS` in `index.html`), the same way as the Trail conditio
 tiles show it when that region is selected; the Valley floor is paved, so it is rated on the weather in
 each block (forecast rain and feels-like) instead of ground wetness, plus road
 wetness, from the rain before each block (measured, then forecast, averaged over
-the Valley floor gauges): 0.02 in or more in the 12 hours before, the block is at
-best Fair; 0.15 in or more in the 6 hours before, Poor (`TRAIL.ROAD_WET` in
+the Valley floor gauges): 0.02 in or more in the 12 hours before the end of the
+block, the block is at best Fair; 0.15 in or more in the 6 hours before its end,
+Poor (`TRAIL.ROAD_WET` in
 `index.html`). A Running / Biking switch recolors the map, and hovering over
 or tapping a region (or Tab, then Enter) opens a card with its parks or cities,
 the rating and its reason, the three time blocks, ground wetness and the number

@@ -440,7 +440,9 @@ class NewGaugeTests(unittest.TestCase):
             backfill.build_gauge("6150", [(datetime(2023, 1, 4, 17, 30), TIP)], datetime(2026, 11, 20, 1, 0), all_years=True)
             self.assertEqual(min(rf.read_daily(rf.HISTORY_DIR / "6150_daily.csv")), date(2011, 10, 1))
 
-    def test_trail_conditions_use_only_the_original_7_gauges(self):
+    def test_original_7_gauges_list_outage_reference_and_gauge_order(self):
+        # TRAIL.GAUGES (the original 7, used only when no trail region is given), the outage reference and the first
+        # 7 lines of gauges.csv are the same 7 gauges, and there are 16 gauges in all.
         html = (Path(__file__).parent / "index.html").read_text()
         import re
         m = re.search(r"^\s*GAUGES: \[([^\]]*)\]", html, re.M)
