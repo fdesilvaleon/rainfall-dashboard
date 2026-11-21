@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 HTML = (ROOT / "index.html").read_text()
 FUNCTIONS = ["rateWetness", "rateBlockRain", "rateComfort", "blockRating", "ratingPosition", "positionText",
-             "watchForLine", "roadWetAnchor"]
+             "watchForLine", "roadWetAnchor", "markerLeftPercent"]
 
 
 def extract():
@@ -144,6 +144,24 @@ class TrailRulesTests(unittest.TestCase):
         self.assertEqual(out["running_poor"], text)
         for k in ("running_great", "running_unknown", "biking", "valley"):
             self.assertIsNone(out[k], k)
+
+    def test_marker_runs_poor_left_to_great_right(self):
+        out = run_js({k: f"return markerLeftPercent({v});" for k, v in {"pos05": 0.5, "poor": 3.95, "great": 0.0, "fair": 2.5}.items()})
+        self.assertAlmostEqual(out["pos05"], 87.5)
+        self.assertAlmostEqual(out["poor"], 1.25)
+        self.assertAlmostEqual(out["great"], 100.0)
+        self.assertAlmostEqual(out["fair"], 37.5)
+        # The marker stays inside its rating's quarter of the bar: Great in the right quarter, Poor in the left one.
+        for pos in (0.0, 0.5, 0.99, 1.0, 1.5, 1.99, 2.0, 2.99, 3.0, 3.95):
+            left = run_js({"x": f"return markerLeftPercent({pos});"})["x"]
+            quarter_from_right = int(pos)
+            self.assertTrue(100 - 25 * (quarter_from_right + 1) <= left <= 100 - 25 * quarter_from_right, (pos, left))
+
+    def test_bar_and_legend_order_in_the_page(self):
+        css = re.search(r"\.pos-bar \{[^}]*\}", HTML).group(0)
+        stops = re.findall(r"var\(--r(\d)-bg\)", css)
+        self.assertEqual(stops, ["3", "3", "2", "1", "0", "0"])  # Poor on the left, Great on the right
+        self.assertIn("for (let k = TRAIL.RATINGS.length - 1; k >= 0; k--)", HTML)  # legend worst to best
 
     def test_road_wet_anchor(self):
         out = run_js({a: f"TRAIL.ROAD_WET.ANCHOR = '{a}'; return roadWetAnchor(100, 106);" for a in ("start", "mid", "end")})

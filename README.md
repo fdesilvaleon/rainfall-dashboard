@@ -368,7 +368,7 @@ Great, Good, Fair, Poor. Each block gets the **worse** of three checks:
   great 50-72°F, good 42-50/72-82, fair 34-42/82-92, poor outside. At an exact
   boundary the better rating applies.
 
-Under each of today's two tiles, a thin bar from Great to Poor has a marker
+Under each of today's two tiles, a thin bar from Poor (left) to Great (right) has a marker
 showing where within its rating the block sits (its label reads, for example,
 "Good, close to Great"); the math is `ratingPosition` in `index.html`. When the
 ground-wetness check alone is Good or worse, the Running tile adds a "watch for"
