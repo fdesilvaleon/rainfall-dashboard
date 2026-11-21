@@ -34,7 +34,7 @@
     --shade-forecast: rgba(42, 120, 214, 0.07); /* ... and of the forecast side */
     --bar: #8a8984;  /* one neutral color for the % of normal bars */
     /* Trail conditions ratings */
-    --r0-bg: #1b6e46; --r0-fg: #ffffff;   /* Optimal */
+    --r0-bg: #1b6e46; --r0-fg: #ffffff;   /* Great */
     --r1-bg: #cfe6d3; --r1-fg: #16301f;   /* Good */
     --r2-bg: #f4d98c; --r2-fg: #3a2a00;   /* Fair */
     --r3-bg: #b5402d; --r3-fg: #ffffff;   /* Poor */
@@ -110,6 +110,12 @@
   .trail-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface); }
   .trail-card h3 { margin: 0 0 8px; font-size: 1rem; }
   .trail-card h3 span { color: var(--text-2); font-weight: 400; }
+  /* Position bar under each Trail conditions tile: Great to Poor, blended, with a marker */
+  .pos-bar { position: relative; height: 6px; margin: 8px 2px 2px; border-radius: 3px;
+    background: linear-gradient(90deg, var(--r0-bg) 0%, var(--r0-bg) 12.5%, var(--r1-bg) 37.5%, var(--r2-bg) 62.5%, var(--r3-bg) 87.5%, var(--r3-bg) 100%); }
+  .pos-mark { position: absolute; top: -4px; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px;
+    background: var(--text); box-shadow: 0 0 0 1.5px var(--surface); }
+  .trail-watch { margin: 4px 0 8px; font-size: 0.85rem; color: var(--text-2); }
   .r0 { background: var(--r0-bg); color: var(--r0-fg); }
   .r1 { background: var(--r1-bg); color: var(--r1-fg); }
   .r2 { background: var(--r2-bg); color: var(--r2-fg); }
@@ -412,24 +418,29 @@
       <dd>Season to date as a share of the average total for a whole water year.</dd>
       <dt>Trail conditions</dt>
       <dd>A rough guide for running and biking (gravel included) in the selected trail region, from the average of
-        that region's gauges (pick the region on the trail conditions map or with the Region menu). Each time block
-        (morning 4-10 AM, mid day 10 AM-4 PM, afternoon 4-10 PM, Pacific time) gets the worse of three checks.
+        that region's gauges (pick the region on the trail conditions map or with the Region menu). Ratings, best to
+        worst: great, good, fair, poor. Each time block (morning 4-10 AM, mid day 10 AM-4 PM, afternoon 4-10 PM, Pacific
+        time) gets the worse of three checks.
         <b>Ground wetness:</b> rain in the 24 hours before the block, plus half of the rain 24-48 hours before, plus a
         quarter of the rain 48-72 hours before (measured rain, then forecast rain for hours not measured yet). Running:
-        under 0.10 in optimal, under 0.50 good, under 1.00 fair, otherwise poor. Biking is stricter: under 0.02 optimal,
-        under 0.05 good, under 0.15 fair, otherwise poor. Only gauges with data for all 72 hours are averaged (the number
-        used shows when you hover over or tap a rating). <b>Season adjustment:</b> early in the water year the dry soil
-        absorbs the first storms, so the ground-wetness limits are multiplied while the season has been dry. The season
-        total is the average of those gauges' rain since Oct 1; under 2.0 in, biking's limits are 2.5 times the above;
-        2.0 to under 5.0 in, 1.5 times; 5.0 in or more, the limits above. Running isn't adjusted (1.0 at every step).
-        If the season total isn't known, no adjustment is made. A line under the section says when it applies. <b>Rain during the block</b> (forecast): under 0.01 in optimal;
-        0.01-0.15 in good for running and fair for biking; more than 0.15 in poor. <b>Comfort</b>, from the forecast
-        "feels like" temperature (which already includes wind chill and heat index): running optimal 45-68°F, good
-        38-45 or 68-78, fair 30-38 or 78-88, poor outside that; biking optimal 50-72°F, good 42-50 or 72-82, fair 34-42
-        or 82-92, poor outside that. At an exact boundary the better rating applies. Today's big rating is the worst
-        of the blocks still ahead; blocks that have ended are marked "Past". The Valley floor is pavement, so ground
-        wetness isn't used there: each block gets the worse of rain during the block and comfort, and is at best fair
-        for 12 hours after 0.02 in of rain and poor for 6 hours after 0.15 in.</dd>
+        under 0.40 in great, under 1.50 good, under 3.00 fair, otherwise poor (set from two runs at Rancho San Antonio in
+        November 2026; early in the season the soil drains faster, so these may be tightened later in the winter).
+        Biking is stricter: under 0.02 great, under 0.05 good, under 0.15 fair, otherwise poor. Only gauges with data for
+        all 72 hours are averaged (the number used shows when you hover over or tap a rating). <b>Season adjustment:</b>
+        early in the water year the dry soil absorbs the first storms, so the ground-wetness limits are multiplied while
+        the season has been dry. The season total is the average of those gauges' rain since Oct 1; under 2.0 in,
+        biking's limits are 2.5 times the above; 2.0 to under 5.0 in, 1.5 times; 5.0 in or more, the limits above.
+        Running isn't adjusted (1.0 at every step). If the season total isn't known, no adjustment is made. A line under
+        the section says when it applies. <b>Rain during the block</b> (forecast): under 0.01 in great; 0.01-0.15 in good
+        for running and fair for biking; more than 0.15 in poor. <b>Comfort</b>, from the forecast "feels like"
+        temperature (which already includes wind chill and heat index): running great 45-68°F, good 38-45 or 68-78, fair
+        30-38 or 78-88, poor outside that; biking great 50-72°F, good 42-50 or 72-82, fair 34-42 or 82-92, poor outside
+        that. At an exact boundary the better rating applies. Today's big rating is the worst of the blocks still ahead;
+        blocks that have ended are marked "Past". The thin bar under it shows where within that rating the block sits
+        (for example "good, close to great"). When the ground is wet enough to rate running good or worse, a line under
+        the running rating says what to watch for. The Valley floor is pavement, so ground wetness isn't used there: each
+        block gets the worse of rain during the block and comfort, and is at best fair if 0.02 in or more of rain fell
+        in the 12 hours before the end of the block, and poor if 0.15 in or more fell in the 6 hours before its end.</dd>
       <dt>Last 7 days and next 7 days</dt>
       <dd>Solid bars: rain measured by the gauge on each of the last 7 days, added up from the hourly data, midnight to
         midnight in PST (the district's time). Striped bars: the National Weather Service's expected rain for the 2.5 km area
@@ -1517,7 +1528,7 @@ function renderForecastChart() {
 const TRAIL = {
   // The gauges whose rain and forecasts are averaged for the ratings (by id). Other gauges are ignored here.
   GAUGES: ["6121", "6140", "6100", "6048", "6129", "6144", "6142"],
-  RATINGS: ["Optimal", "Good", "Fair", "Poor"],  // best to worst; ratings are stored as 0-3
+  RATINGS: ["Great", "Good", "Fair", "Poor"],  // best to worst; ratings are stored as 0-3
   BLOCKS: [                                       // Pacific local clock hours
     { name: "Morning", start: 4, end: 10, label: "4-10 AM", when: "morning" },
     { name: "Mid day", start: 10, end: 16, label: "10 AM-4 PM", when: "mid day" },
@@ -1526,8 +1537,11 @@ const TRAIL = {
   NEXT_DAYS: 2,
   // A. Ground wetness = rain 0-24 h before the block + 1/2 x rain 24-48 h before + 1/4 x rain 48-72 h before.
   WETNESS_WEIGHTS: [1, 0.5, 0.25],
-  // Limits in inches: under the 1st = Optimal, under the 2nd = Good, under the 3rd = Fair, otherwise Poor.
-  WETNESS: { running: [0.10, 0.50, 1.00], biking: [0.02, 0.05, 0.15] },
+  // Limits in inches: under the 1st = Great, under the 2nd = Good, under the 3rd = Fair, otherwise Poor.
+  // Running: calibrated on Fede's Rancho San Antonio runs of Sun Nov 15, 2026 (wetness 0.24-0.39 in, felt very good)
+  // and Fri Nov 20, 2026 (1.36-1.95 in, felt good to very good). A first pass: early-season soils drain faster than
+  // saturated late-season soils, so recheck these later in the winter. (They were 0.10, 0.50, 1.00.)
+  WETNESS: { running: [0.40, 1.50, 3.00], biking: [0.02, 0.05, 0.15] },
   // Season adjustment of the WETNESS limits: early in the water year the dry soil absorbs the first storms,
   // so the limits are multiplied while the season has been dry. The season total is the average, across the
   // GAUGES above with data, of rain since Oct 1 (the "Season to date" numbers). The first step whose BELOW is
@@ -1537,9 +1551,10 @@ const TRAIL = {
     { BELOW: 5.0, running: 1.0, biking: 1.5 },       // 2.0 to under 5.0 in
     { BELOW: Infinity, running: 1.0, biking: 1.0 },  // 5.0 in or more: the base limits
   ],
-  // B. Forecast rain during the block (inches): under OPTIMAL_BELOW = Optimal; up to POOR_ABOVE = MIDDLE rating; above = Poor.
+  // B. Forecast rain during the block (inches): under OPTIMAL_BELOW = Great; up to POOR_ABOVE = MIDDLE rating; above = Poor.
   BLOCK_RAIN: { OPTIMAL_BELOW: 0.01, POOR_ABOVE: 0.15, MIDDLE: { running: 1, biking: 2 } },
   // C. Comfort from the forecast feels-like temperature (F). Ranges are inclusive: at a boundary the better rating applies.
+  // (The "optimal" range is the Great one; the key keeps its old name.)
   COMFORT: {
     running: { optimal: [45, 68], good: [38, 78], fair: [30, 88] },
     biking: { optimal: [50, 72], good: [42, 82], fair: [34, 92] },
@@ -1548,10 +1563,15 @@ const TRAIL = {
   // block (measured, then forecast), averaged over the region's gauges: FAIR_AT or more in the FAIR_HOURS before = the
   // block is at best Fair; POOR_AT or more in the POOR_HOURS before = Poor. Each window is checked on its own: a gauge
   // missing an hour in a window is left out of that window's average; none left = no cap from that window.
-  ROAD_WET: { FAIR_HOURS: 12, FAIR_AT: 0.02, POOR_HOURS: 6, POOR_AT: 0.15 },
-  // Trail regions, each rated with its own gauges (ids from gauges.csv), shown in "Region ratings (preview)".
-  // The Trail conditions tiles above still use GAUGES. useWetness: false = paved, so ground wetness isn't used and
-  // the rating is the worse of block rain and comfort; roadWet: true adds the ROAD_WET cap.
+  // ANCHOR: where in the block both windows end: "start", "mid" (middle of the block) or "end".
+  ROAD_WET: { FAIR_HOURS: 12, FAIR_AT: 0.02, POOR_HOURS: 6, POOR_AT: 0.15, ANCHOR: "end" },
+  // One extra line under the Running tile when the ground is wet enough to notice (ground-wetness check Good or worse),
+  // for regions that use ground wetness. Never for biking or the Valley floor.
+  WATCH_FOR: { running: "Expect puddles in shaded low spots and slick clay on steep sections." },
+  // Trail regions, each rated with its own gauges (ids from gauges.csv): the trail conditions map, and the Trail
+  // conditions tiles for the selected region. (GAUGES above is the original 7-gauge set, used only when no region is
+  // given.) useWetness: false = paved, so ground wetness isn't used and the rating is the worse of block rain and
+  // comfort; roadWet: true adds the ROAD_WET cap.
   REGIONS: [
     { id: "foothills", name: "Peninsula foothills", gauges: ["6140", "6100", "6142", "6147"], useWetness: true },
     // 6146 Los Trancos is not a Valley Water sensor; Valley Water says its data isn't quality-checked.
@@ -1677,10 +1697,12 @@ function blockInputs(startH, endH, useForecast, regionId) {
     }
     if (complete) { wet.push(windows); wetIds.push(g.id); }
     if (roadWet) {
-      // Road wetness: rain in the hours before the block starts (measured, then forecast). Null if any hour is missing.
+      // Road wetness: rain in the hours before the anchor (ROAD_WET.ANCHOR: the block's start, middle or end), measured
+      // for past hours and forecast for later ones. Null if any hour is missing.
+      const end = roadWetAnchor(startH, endH);
       const before = hours => {
         let sum = 0;
-        for (let h = startH - hours; h < startH; h++) { const v = hourRain(h); if (v == null) return null; sum += v; }
+        for (let h = end - hours; h < end; h++) { const v = hourRain(h); if (v == null) return null; sum += v; }
         return sum;
       };
       const fair = before(TRAIL.ROAD_WET.FAIR_HOURS), poor = before(TRAIL.ROAD_WET.POOR_HOURS);
@@ -1711,6 +1733,12 @@ function blockInputs(startH, endH, useForecast, regionId) {
   };
 }
 
+// The hour the road-wetness windows end at, for a block from startH to endH (ROAD_WET.ANCHOR).
+function roadWetAnchor(startH, endH) {
+  const a = TRAIL.ROAD_WET.ANCHOR;
+  return a === "start" ? startH : a === "mid" ? startH + Math.round((endH - startH) / 2) : endH;
+}
+
 // Ratings for one block and sport: each check (null when it can't be made) and the worst of them.
 // useWetness=false (paved areas): ground wetness isn't checked, and the rating is the worse of block rain and
 // comfort (no rating if neither is known).
@@ -1733,6 +1761,78 @@ function blockRating(inputs, sport, multiplier = 1, useWetness = true) {
   return { checks, rating: inputs.wetness == null ? null : Math.max(...known) };
 }
 
+// Where a block sits on the Great-Good-Fair-Poor scale: a number from 0 to just under 4 whose whole part is the
+// rating (the same "worst of the checks" rule as blockRating), and whose fraction is how far into that rating it is.
+// Each check gives its own position; the highest wins. Values are compared as blockRating does (rounded).
+//   Ground wetness: rating + the fraction of the way through that rating's limits (Poor: past the last limit, by up to
+//     the last limit again, at most 3.95). Uses the season-adjusted limits in force (multiplier).
+//   Rain in the block: Great: value / OPTIMAL_BELOW; the middle rating: the fraction from OPTIMAL_BELOW to POOR_ABOVE;
+//     Poor: 3 + (value - POOR_ABOVE) / POOR_ABOVE, at most 3.95.
+//   Comfort: rating + the fraction of the way from the better edge of that range to its worse edge, on the cold or the
+//     hot side (Great: from the middle of the Great range to its edge); Poor reaches 3.95 at 15 F past the Fair edge.
+//   Road wetness (paved regions with roadWet; steps 0/2/3): Poor: 3 + (6-hour amount - POOR_AT) / POOR_AT;
+//     Fair: 2 + (12-hour amount - FAIR_AT) / (POOR_AT - FAIR_AT); otherwise 12-hour amount / FAIR_AT (each at most +0.95).
+// Returns { rating, position, parts } (rating and position null when the block has no rating).
+function ratingPosition(inputs, sport, multiplier = 1, useWetness = true) {
+  const frac = f => Math.max(0, Math.min(0.99, f));
+  const r2 = x => Math.round(x * 100) / 100;
+  const parts = {};
+  if (inputs.rain != null) {
+    const v = r2(inputs.rain), b = TRAIL.BLOCK_RAIN, r = rateBlockRain(sport, inputs.rain);
+    parts.rain = r === 0 ? frac(v / b.OPTIMAL_BELOW) : r === 3 ? 3 + Math.min(0.95, (v - b.POOR_ABOVE) / b.POOR_ABOVE)
+      : r + frac((v - b.OPTIMAL_BELOW) / (b.POOR_ABOVE - b.OPTIMAL_BELOW));
+  }
+  if (useWetness && inputs.wetness != null) {
+    const v = r2(inputs.wetness), r = rateWetness(sport, inputs.wetness, multiplier);
+    const t = TRAIL.WETNESS[sport].map(x => Math.round(x * multiplier * 1e4) / 1e4);
+    parts.wetness = r === 3 ? 3 + Math.min(0.95, (v - t[2]) / t[2]) : r + frac(r === 0 ? v / t[0] : (v - t[r - 1]) / (t[r] - t[r - 1]));
+  }
+  if (inputs.feels != null) {
+    const v = Math.round(inputs.feels), c = TRAIL.COMFORT[sport], r = rateComfort(sport, inputs.feels);
+    const mid = (c.optimal[0] + c.optimal[1]) / 2, cold = v < mid;
+    const edges = [mid, ...[c.optimal, c.good, c.fair].map(x => (cold ? x[0] : x[1]))];  // better to worse
+    const dist = (a, b) => Math.abs(b - a);
+    parts.comfort = r === 3 ? 3 + 0.95 * Math.min(1, dist(edges[3], v) / 15) : r + frac(dist(edges[r], v) / (dist(edges[r], edges[r + 1]) || 1));
+  }
+  const known = Object.keys(parts).length;
+  if (!useWetness && known && (inputs.roadFair != null || inputs.roadPoor != null)) {
+    const rw = TRAIL.ROAD_WET, fair = inputs.roadFair == null ? null : r2(inputs.roadFair), poor = inputs.roadPoor == null ? null : r2(inputs.roadPoor);
+    parts.road = poor != null && poor >= rw.POOR_AT ? 3 + Math.min(0.95, (poor - rw.POOR_AT) / rw.POOR_AT)
+      : fair != null && fair >= rw.FAIR_AT ? 2 + Math.min(0.95, (fair - rw.FAIR_AT) / (rw.POOR_AT - rw.FAIR_AT))
+      : Math.min(0.95, (fair != null ? fair : poor != null ? poor : 0) / rw.FAIR_AT);
+  }
+  const rated = useWetness ? parts.wetness != null : known > 0;
+  const position = rated ? Math.max(...Object.values(parts)) : null;
+  return { rating: position == null ? null : Math.floor(position), position, parts };
+}
+
+// The position in words, for the bar's label: "Great", "Poor", or for Good and Fair "Good, close to Great" (better
+// third of the band), "Good, close to Fair" (worse third) or just "Good".
+function positionText(position) {
+  const r = Math.floor(position), f = position - r, R = TRAIL.RATINGS;
+  if (r === 0 || r === 3) return R[r];
+  return f < 1 / 3 ? `${R[r]}, close to ${R[r - 1]}` : f >= 2 / 3 ? `${R[r]}, close to ${R[r + 1]}` : R[r];
+}
+
+// The "watch for" line: Running only, regions that use ground wetness, and only when the ground-wetness check alone is
+// Good or worse. Otherwise null.
+function watchForLine(region, sport, wetnessRating) {
+  return sport === "running" && region.useWetness && wetnessRating != null && wetnessRating >= 1 ? TRAIL.WATCH_FOR.running : null;
+}
+
+// The thin Great-to-Poor bar with a marker at the position (not color alone: it has a text label too).
+function positionBar(position) {
+  const bar = el("div", null, "pos-bar");
+  const text = positionText(position);
+  bar.setAttribute("role", "img");
+  bar.setAttribute("aria-label", `Position on the scale: ${text}`);
+  bar.title = text;
+  const mark = el("i", null, "pos-mark");
+  mark.style.left = `${(position / 4) * 100}%`;
+  bar.appendChild(mark);
+  return bar;
+}
+
 function ratingBox(rating, cls = "") {
   const box = el("div", null, `${cls} ${rating == null ? "rnone" : "r" + rating}`);
   return box;
@@ -1751,7 +1851,7 @@ function inputsText(inp) {
   if (inp.rain != null) parts.push(`rain ${inp.rain.toFixed(2)} in`);
   if (inp.feels != null) parts.push(`feels like ${Math.round(inp.feels)}°F`);
   if (inp.roadFair != null || inp.roadPoor != null) {
-    const amt = (x, h) => `${x == null ? "–" : x.toFixed(2)} in in the ${h} h before`;
+    const amt = (x, h) => `${x == null ? "–" : x.toFixed(2)} in in the ${h} h up to the ${TRAIL.ROAD_WET.ANCHOR} of the block`;
     parts.push(`roads: ${amt(inp.roadPoor, TRAIL.ROAD_WET.POOR_HOURS)}, ${amt(inp.roadFair, TRAIL.ROAD_WET.FAIR_HOURS)}`);
   }
   return parts.join(" · ");
@@ -1765,8 +1865,9 @@ function reasonLine(sport, block, inp, r, futureRainAll) {
     const c = r.checks;
     if (r.rating === 0) return `${why}: no rain expected${inp.feels != null ? `, feels like ${Math.round(inp.feels)}°F` : ""}.`;
     if (c.rain === r.rating) return `${why}: rain expected ${when} (${inp.rain.toFixed(2)} in).`;
-    if (c.road === r.rating && c.road === 3) return `Roads very wet (${inp.roadPoor.toFixed(2)} in of rain in the ${TRAIL.ROAD_WET.POOR_HOURS} hours before).`;
-    if (c.road === r.rating) return `Roads likely still wet (${inp.roadFair.toFixed(2)} in of rain in the ${TRAIL.ROAD_WET.FAIR_HOURS} hours before).`;
+    const upTo = { start: "before the block", mid: "up to the middle of the block", end: "up to the end of the block" }[TRAIL.ROAD_WET.ANCHOR] || "before";
+    if (c.road === r.rating && c.road === 3) return `Roads very wet (${inp.roadPoor.toFixed(2)} in of rain in the ${TRAIL.ROAD_WET.POOR_HOURS} hours ${upTo}).`;
+    if (c.road === r.rating) return `Roads likely still wet (${inp.roadFair.toFixed(2)} in of rain in the ${TRAIL.ROAD_WET.FAIR_HOURS} hours ${upTo}).`;
     const f = Math.round(inp.feels);
     return `${why}: ${f < TRAIL.COMFORT[sport].optimal[0] ? "cold" : "hot"}, feels like ${f}°F ${when}.`;
   }
@@ -1795,25 +1896,28 @@ function trailGrid(regionId, useForecast, days, nowH) {
 function todaySummary(blocks, sport, multiplier, useWetness = true) {
   const rated = blocks.map(b => ({ b, r: blockRating(b.inputs, sport, multiplier, useWetness) }));
   const ahead = rated.filter(x => !x.b.past && x.r.rating != null);
-  let big, reason, gaugesUsed;
+  let big, reason, gaugesUsed, position = null, wetnessRating = null;
   if (ahead.length) {
     const worst = ahead.reduce((a, x) => (x.r.rating > a.r.rating ? x : a));
     big = worst.r.rating;
     const futureRain = ahead.every(x => x.b.inputs.rain != null) ? (ahead.some(x => rateBlockRain(sport, x.b.inputs.rain) > 0) ? 1 : 0) : null;
     reason = reasonLine(sport, worst.b, worst.b.inputs, worst.r, futureRain);
     gaugesUsed = worst.b.inputs.wetGauges;
+    position = ratingPosition(worst.b.inputs, sport, multiplier, useWetness).position;
+    wetnessRating = worst.r.checks.wetness;
   } else {
     const evening = blocks[blocks.length - 1].inputs;
     big = !useWetness || evening.wetness == null ? null : rateWetness(sport, evening.wetness, multiplier);
     reason = big == null ? "Not enough data for a rating." :
       `Today's blocks have ended; rated on ground wetness: ${evening.wetness.toFixed(2)} in over the last 3 days.`;
     gaugesUsed = evening.wetGauges;
+    if (big != null) { position = ratingPosition({ wetness: evening.wetness }, sport, multiplier, true).position; wetnessRating = big; }
   }
-  return { rated, big, reason, gaugesUsed };
+  return { rated, big, reason, gaugesUsed, position, wetnessRating };
 }
 
-// regionId: rate with a region's gauges (TRAIL.REGIONS) instead of TRAIL.GAUGES. Not used yet: the tiles still show
-// TRAIL.GAUGES.
+// regionId: rate with a region's gauges (TRAIL.REGIONS); without one, TRAIL.GAUGES (the original 7). The page always
+// passes the selected region.
 function renderTrail(regionId) {
   const region = trailRegion(regionId);
   const next = document.getElementById("trail-next"), notes = document.getElementById("trail-notes");
@@ -1839,7 +1943,7 @@ function renderTrail(regionId) {
 
   // Today: one card per sport.
   for (const [sport, sportName] of SPORTS) {
-    const { rated, big, reason, gaugesUsed } = todaySummary(grid[0], sport, mult[sport], region.useWetness);
+    const { rated, big, reason, gaugesUsed, position, wetnessRating } = todaySummary(grid[0], sport, mult[sport], region.useWetness);
     const card = el("div", null, "trail-card");
     const h = el("h3", sportName + " ");
     h.appendChild(el("span", dayTitle(date0)));
@@ -1849,7 +1953,10 @@ function renderTrail(regionId) {
     if (big != null) bigBox.appendChild(squares(big));
     bigBox.title = `Average of ${gaugesUsed} gauges`;
     card.appendChild(bigBox);
+    if (position != null) card.appendChild(positionBar(position));
     card.appendChild(el("p", reason, "trail-reason"));
+    const watch = watchForLine(region, sport, wetnessRating);
+    if (watch) card.appendChild(el("p", watch, "trail-watch"));
     const cells = el("div", null, "blocks");
     for (const { b, r } of rated) {
       const cell = b.past ? el("div", null, "block past") : ratingBox(r.rating, "block");
