@@ -110,9 +110,9 @@
   .trail-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px; background: var(--surface); }
   .trail-card h3 { margin: 0 0 8px; font-size: 1rem; }
   .trail-card h3 span { color: var(--text-2); font-weight: 400; }
-  /* Position bar under each Trail conditions tile: Great to Poor, blended, with a marker */
+  /* Position bar under each Trail conditions tile: Poor (left) to Great (right), blended, with a marker */
   .pos-bar { position: relative; height: 6px; margin: 8px 2px 2px; border-radius: 3px;
-    background: linear-gradient(90deg, var(--r0-bg) 0%, var(--r0-bg) 12.5%, var(--r1-bg) 37.5%, var(--r2-bg) 62.5%, var(--r3-bg) 87.5%, var(--r3-bg) 100%); }
+    background: linear-gradient(90deg, var(--r3-bg) 0%, var(--r3-bg) 12.5%, var(--r2-bg) 37.5%, var(--r1-bg) 62.5%, var(--r0-bg) 87.5%, var(--r0-bg) 100%); }
   .pos-mark { position: absolute; top: -4px; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px;
     background: var(--text); box-shadow: 0 0 0 1.5px var(--surface); }
   .trail-watch { margin: 4px 0 8px; font-size: 0.85rem; color: var(--text-2); }
@@ -436,7 +436,7 @@
         temperature (which already includes wind chill and heat index): running great 45-68°F, good 38-45 or 68-78, fair
         30-38 or 78-88, poor outside that; biking great 50-72°F, good 42-50 or 72-82, fair 34-42 or 82-92, poor outside
         that. At an exact boundary the better rating applies. Today's big rating is the worst of the blocks still ahead;
-        blocks that have ended are marked "Past". The thin bar under it shows where within that rating the block sits
+        blocks that have ended are marked "Past". The thin bar under it (poor on the left, great on the right) shows where within that rating the block sits
         (for example "good, close to great"). When the ground is wet enough to rate running good or worse, a line under
         the running rating says what to watch for. The Valley floor is pavement, so ground wetness isn't used there: each
         block gets the worse of rain during the block and comfort, and is at best fair if 0.02 in or more of rain fell
@@ -1820,7 +1820,13 @@ function watchForLine(region, sport, wetnessRating) {
   return sport === "running" && region.useWetness && wetnessRating != null && wetnessRating >= 1 ? TRAIL.WATCH_FOR.running : null;
 }
 
-// The thin Great-to-Poor bar with a marker at the position (not color alone: it has a text label too).
+// Where the marker goes on the bar, in % from the left: the bar runs Poor (left) to Great (right), so a position of 0
+// (Great) is at 100% and 3.95 (Poor) near 1.25%.
+function markerLeftPercent(position) {
+  return (1 - position / 4) * 100;
+}
+
+// The thin Poor-to-Great bar with a marker at the position (not color alone: it has a text label too).
 function positionBar(position) {
   const bar = el("div", null, "pos-bar");
   const text = positionText(position);
@@ -1828,7 +1834,7 @@ function positionBar(position) {
   bar.setAttribute("aria-label", `Position on the scale: ${text}`);
   bar.title = text;
   const mark = el("i", null, "pos-mark");
-  mark.style.left = `${(position / 4) * 100}%`;
+  mark.style.left = `${markerLeftPercent(position)}%`;
   bar.appendChild(mark);
   return bar;
 }
@@ -2364,7 +2370,8 @@ function renderTrailMapLegend() {
     s.append(sw, text);
     legend.appendChild(s);
   };
-  TRAIL.RATINGS.forEach((name, k) => item(css(`--r${k}-bg`), name));
+  // Worst to best, left to right (as the position bar under the tiles), then "No data".
+  for (let k = TRAIL.RATINGS.length - 1; k >= 0; k--) item(css(`--r${k}-bg`), TRAIL.RATINGS[k]);
   item(css("--muted"), "No data");
 }
 
