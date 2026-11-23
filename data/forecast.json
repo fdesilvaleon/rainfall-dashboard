@@ -9,7 +9,7 @@
   "periods lists the forecast periods counted for each day, as NWS gave them (converted from mm to inches)."
  ],
  "time_zone": "America/Los_Angeles",
- "fetched_at": "2026-11-22T23:42:31-08:00",
+ "fetched_at": "2026-11-23T01:31:11-08:00",
  "gauges": {
   "6121": {
    "name": "Mountain View",
@@ -18,24 +18,9 @@
     "x": 94,
     "y": 86
    },
-   "nws_updated": "2026-11-23T07:37:27+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 7.0,
-     "chance_max_pct": 9,
-     "periods": [
-      {
-       "start": "2026-11-22T17:00-08:00",
-       "hours": 5.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 50.8
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -233,6 +218,39 @@
        "apparent_temp_f": 59.0
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.09,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 77,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.0,
+       "apparent_temp_f": 54.2
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.03,
+       "apparent_temp_f": 53.2
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.05,
+       "apparent_temp_f": 60.5
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 57.0
+      }
+     ]
     }
    ]
   },
@@ -243,24 +261,9 @@
     "x": 91,
     "y": 83
    },
-   "nws_updated": "2026-11-23T07:37:27+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 7.0,
-     "chance_max_pct": 8,
-     "periods": [
-      {
-       "start": "2026-11-22T17:00-08:00",
-       "hours": 5.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 42.8
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -458,6 +461,39 @@
        "apparent_temp_f": 53.8
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.17,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 79,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 53.8
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.06,
+       "apparent_temp_f": 52.3
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.07,
+       "apparent_temp_f": 54.5
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.03,
+       "apparent_temp_f": 51.3
+      }
+     ]
     }
    ]
   },
@@ -468,24 +504,9 @@
     "x": 92,
     "y": 81
    },
-   "nws_updated": "2026-11-23T07:37:27+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 7.0,
-     "chance_max_pct": 11,
-     "periods": [
-      {
-       "start": "2026-11-22T17:00-08:00",
-       "hours": 5.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 45.0
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -683,6 +704,39 @@
        "apparent_temp_f": 55.7
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.19,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 79,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 53.3
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.08,
+       "apparent_temp_f": 52.2
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.08,
+       "apparent_temp_f": 57.3
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 53.3
+      }
+     ]
     }
    ]
   },
@@ -693,24 +747,9 @@
     "x": 93,
     "y": 84
    },
-   "nws_updated": "2026-11-23T07:37:27+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 7.0,
-     "chance_max_pct": 9,
-     "periods": [
-      {
-       "start": "2026-11-22T17:00-08:00",
-       "hours": 5.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 49.2
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -908,6 +947,39 @@
        "apparent_temp_f": 58.3
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.12,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 78,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 54.0
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.04,
+       "apparent_temp_f": 53.2
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.06,
+       "apparent_temp_f": 60.5
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 56.7
+      }
+     ]
     }
    ]
   },
@@ -918,24 +990,9 @@
     "x": 93,
     "y": 89
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 7,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 51.3
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -1133,6 +1190,39 @@
        "apparent_temp_f": 59.0
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.07,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 78,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.0,
+       "apparent_temp_f": 54.2
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 53.3
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.04,
+       "apparent_temp_f": 60.5
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 57.0
+      }
+     ]
     }
    ]
   },
@@ -1143,24 +1233,9 @@
     "x": 93,
     "y": 83
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 11,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 49.2
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -1358,6 +1433,39 @@
        "apparent_temp_f": 58.0
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.14,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 78,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 53.8
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.05,
+       "apparent_temp_f": 52.7
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.07,
+       "apparent_temp_f": 60.3
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 56.2
+      }
+     ]
     }
    ]
   },
@@ -1368,24 +1476,9 @@
     "x": 89,
     "y": 85
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 7,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 44.3
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -1583,6 +1676,39 @@
        "apparent_temp_f": 55.0
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.16,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 79,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 54.2
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.05,
+       "apparent_temp_f": 52.7
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.06,
+       "apparent_temp_f": 56.7
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.03,
+       "apparent_temp_f": 52.3
+      }
+     ]
     }
    ]
   },
@@ -1593,24 +1719,9 @@
     "x": 90,
     "y": 85
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 8,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 46.2
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -1808,6 +1919,39 @@
        "apparent_temp_f": 56.3
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.13,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 79,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 53.3
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.04,
+       "apparent_temp_f": 52.7
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.06,
+       "apparent_temp_f": 59.3
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 53.7
+      }
+     ]
     }
    ]
   },
@@ -1818,24 +1962,9 @@
     "x": 89,
     "y": 84
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 8,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 41.3
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -2033,6 +2162,39 @@
        "apparent_temp_f": 54.0
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.17,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 79,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 55.7
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.05,
+       "apparent_temp_f": 53.2
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.07,
+       "apparent_temp_f": 51.8
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.03,
+       "apparent_temp_f": 49.2
+      }
+     ]
     }
    ]
   },
@@ -2043,24 +2205,9 @@
     "x": 87,
     "y": 86
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 6,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 41.8
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -2258,6 +2405,39 @@
        "apparent_temp_f": 54.0
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.15,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 79,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 55.0
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.04,
+       "apparent_temp_f": 52.7
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.06,
+       "apparent_temp_f": 52.8
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.03,
+       "apparent_temp_f": 51.0
+      }
+     ]
     }
    ]
   },
@@ -2268,24 +2448,9 @@
     "x": 88,
     "y": 88
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 6,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 48.7
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -2483,6 +2648,39 @@
        "apparent_temp_f": 58.5
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.11,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 79,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 54.5
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.03,
+       "apparent_temp_f": 53.7
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.05,
+       "apparent_temp_f": 61.0
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 56.2
+      }
+     ]
     }
    ]
   },
@@ -2493,24 +2691,9 @@
     "x": 86,
     "y": 89
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 5,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 42.2
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -2708,6 +2891,39 @@
        "apparent_temp_f": 53.8
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.13,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 79,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 54.3
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.03,
+       "apparent_temp_f": 52.7
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.06,
+       "apparent_temp_f": 54.7
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.03,
+       "apparent_temp_f": 49.2
+      }
+     ]
     }
    ]
   },
@@ -2718,24 +2934,9 @@
     "x": 98,
     "y": 76
    },
-   "nws_updated": "2026-11-23T07:37:27+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.0,
-     "complete": false,
-     "hours_covered": 7.0,
-     "chance_max_pct": 28,
-     "periods": [
-      {
-       "start": "2026-11-22T17:00-08:00",
-       "hours": 5.0,
-       "rain_in": 0.0,
-       "apparent_temp_f": 45.8
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -2933,6 +3134,39 @@
        "apparent_temp_f": 56.0
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.21,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 76,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 54.5
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.11,
+       "apparent_temp_f": 52.8
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.07,
+       "apparent_temp_f": 55.0
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 53.5
+      }
+     ]
     }
    ]
   },
@@ -2943,24 +3177,9 @@
     "x": 99,
     "y": 74
    },
-   "nws_updated": "2026-11-23T07:37:27+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.02,
-     "complete": false,
-     "hours_covered": 7.0,
-     "chance_max_pct": 34,
-     "periods": [
-      {
-       "start": "2026-11-22T17:00-08:00",
-       "hours": 5.0,
-       "rain_in": 0.02,
-       "apparent_temp_f": 45.4
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -3158,6 +3377,39 @@
        "apparent_temp_f": 55.5
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.27,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 76,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 55.2
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.15,
+       "apparent_temp_f": 53.3
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.08,
+       "apparent_temp_f": 55.3
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.02,
+       "apparent_temp_f": 53.5
+      }
+     ]
     }
    ]
   },
@@ -3168,24 +3420,9 @@
     "x": 102,
     "y": 74
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.04,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 40,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.04,
-       "apparent_temp_f": 46.5
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -3383,6 +3620,39 @@
        "apparent_temp_f": 57.2
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.16,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 75,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 53.0
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.08,
+       "apparent_temp_f": 52.0
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.06,
+       "apparent_temp_f": 56.8
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 54.2
+      }
+     ]
     }
    ]
   },
@@ -3393,24 +3663,9 @@
     "x": 103,
     "y": 74
    },
-   "nws_updated": "2026-11-23T06:26:54+00:00",
-   "fetched_at": "2026-11-22T23:42:31-08:00",
+   "nws_updated": "2026-11-23T08:26:12+00:00",
+   "fetched_at": "2026-11-23T01:31:11-08:00",
    "days": [
-    {
-     "date": "2026-11-22",
-     "rain_in": 0.05,
-     "complete": false,
-     "hours_covered": 8.0,
-     "chance_max_pct": 42,
-     "periods": [
-      {
-       "start": "2026-11-22T16:00-08:00",
-       "hours": 6.0,
-       "rain_in": 0.05,
-       "apparent_temp_f": 48.7
-      }
-     ]
-    },
     {
      "date": "2026-11-23",
      "rain_in": 0.0,
@@ -3608,10 +3863,43 @@
        "apparent_temp_f": 58.5
       }
      ]
+    },
+    {
+     "date": "2026-11-29",
+     "rain_in": 0.14,
+     "complete": true,
+     "hours_covered": 24.0,
+     "chance_max_pct": 74,
+     "periods": [
+      {
+       "start": "2026-11-28T22:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 53.2
+      },
+      {
+       "start": "2026-11-29T04:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.06,
+       "apparent_temp_f": 51.3
+      },
+      {
+       "start": "2026-11-29T10:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.06,
+       "apparent_temp_f": 58.5
+      },
+      {
+       "start": "2026-11-29T16:00-08:00",
+       "hours": 6.0,
+       "rain_in": 0.01,
+       "apparent_temp_f": 55.7
+      }
+     ]
     }
    ]
   }
  },
- "checked_at": "2026-11-22T23:42:31-08:00",
+ "checked_at": "2026-11-23T01:31:11-08:00",
  "last_error": null
 }
